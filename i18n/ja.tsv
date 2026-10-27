@@ -1,0 +1,912 @@
+# ja catalog — key: English source, value: translation
+'Inside the circle?' has the same answer if you square both sides. The square root was never needed.	「円の中にある？」は、両辺を二乗しても答えが変わりません。平方根は最初から要りませんでした。
+0 ≤ d < 4, i.e. d SHR 2 = 0	0 ≤ d < 4、つまり d SHR 2 = 0
+0-9 a number	0-9 数値
+1 if A < B, else 0.	A < B なら 1、そうでなければ 0。
+1 if A = B, else 0.	A = B なら 1、そうでなければ 0。
+1 if A ≥ B, else 0.	A ≥ B なら 1、そうでなければ 0。
+16 colours need 4 bits per pixel. How much smaller is a 2-bit screen plus a 4-entry palette?	16 色なら 1 ピクセルあたり 4 ビット必要です。2 ビットの画面に 4 色パレットを足すと、どれだけ小さくなるでしょう？
+21 AND 15 = 5. Keeping the low four bits is mod 16, so the clock wraps for free.	21 AND 15 = 5。下位 4 ビットだけを残すのは 16 で割った余りと同じなので、時計はひとりでに一周します。
+256 particles, one per thread: particle tid sits at rom[tid] = row·16 + column.\nWind blows right in rows 0..7 (colour 12) and left in rows 8..15 (colour 6), one column per frame, wrapping.\nPaint each particle where it is now. Last year's kernel argued with itself and dropped frames; this one must finish in ≤ 100 cycles.	256 個の粒子を 1 スレッドに 1 つずつ：粒子 tid は rom[tid] = 行·16 + 列 にあります。\n0..7 行では風が右へ（色 12）、8..15 行では左へ（色 6）、1 フレームに 1 列ずつ吹き、端で反対側へ回り込みます。\n各粒子を今いる位置に描いてください。去年のカーネルは自分自身と言い争ってフレームを落としました。今回は ≤ 100 サイクルで描き切ること。
+256 pixels share 16 entries, so each entry shows up 16 times. The table is read 256 times but stored once.	256 ピクセルが 16 個の項目を共有するので、各項目は 16 回ずつ現れます。表は 256 回読まれますが、保存されるのは 1 つだけです。
+256 threads now run as 8 warps of 32, and rom[0..256] holds one reading per thread.\nEach warp has a reference reading: the first one of its own block of 32 (thread 0, 32, 64, …).\nWrite out[tid] = rom[tid] − the reference of the warp the thread belongs to.\nThe old program subtracts rom[0] everywhere, which is right for exactly one warp.	256 スレッドは 32 個ずつ 8 つの warp に分かれ、rom[0..256] にはスレッドごとに 1 つの読み値が入っています。\n各 warp には基準の読み値があります：自分の 32 個のブロックの先頭（スレッド 0、32、64、…）のものです。\nout[tid] = rom[tid] − （そのスレッドが属する warp の基準）を書き込んでください。\n旧プログラムはどこでも rom[0] を引いていて、正しいのは 1 つの warp だけです。
+256 — one per pixel. Tiles trade memory for an extra lookup, and grow far better on bigger screens.	256——1 ピクセルにつき 1 つ。タイルは参照が 1 回増える代わりにメモリを節約し、画面が大きいほどずっと有利になります。
+32 per lane	レーンごとに 32 回
+32 times	32 回
+32 trips around a 5-instruction loop is 160 slots, each with 31 idle lanes. Utilisation: about 3%.	5 命令のループを 32 周すると 160 スロット、そのどれでも 31 レーンが遊んでいます。稼働率は約 3%。
+32 → 16 → 8 → 4 → 2 → 1: log2(32) = 5 steps. The same 31 additions happen, but 16 at a time.	32 → 16 → 8 → 4 → 2 → 1：log2(32) = 5 ステップ。足し算は同じ 31 回ですが、16 個ずつ同時に行います。
+3² + 4² = 25 = 5². Its squared distance equals the squared radius, so the test must say 'at most', not 'less than'.	3² + 4² = 25 = 5²。距離の二乗がちょうど半径の二乗に等しいので、判定は「未満」ではなく「以下」にしなければなりません。
+512 bits instead of 1024, plus four tiny palette entries. Fewer bits per pixel, fewer colours on screen at once.	1024 ビットではなく 512 ビット、それに小さなパレット項目が 4 つ。1 ピクセルのビット数が減れば、同時に出せる色も減ります。
+A 2D grid in 1D memory needs an agreed order. Swap rows and columns and every read still succeeds — it just reads the wrong thing.	2D グリッドを 1D のメモリに置くには、並べ方の約束が必要です。行と列を入れ替えても読み出しはすべて成功します——ただ、読んでいるのは別のものです。
+A 2D picture is a 1D array. Step off its edge and you silently read a neighbour, not an error.	2D の画像は 1D の配列です。端をはみ出してもエラーにはならず、黙って隣を読んでしまいます。
+A 4×4 table tiles a 16×16 screen. How many pixels show the same table entry?	4×4 の表が 16×16 の画面にタイル状に敷き詰められます。同じ表の項目が表示されるピクセルはいくつ？
+A COMMON MYTH	よくある誤解
+A GPU launches thousands of threads with the same kernel; each reads its built-in index to find the data it owns.	GPU は同じカーネルで何千ものスレッドを起動し、各スレッドは組み込みのインデックスを読んで自分の担当データを見つけます。
+A Single Light	ひとつの灯り
+A Whole Machine Room	機械室まるごと
+A branch costs extra only when lanes disagree. When the whole warp agrees, the other side has no active lane and is skipped.	分岐に余分なコストがかかるのは、レーンの意見が割れたときだけです。warp 全体が一致していれば、反対側に動くレーンはなく、その側は飛ばされます。
+A branch whose condition is the same across the warp does not split it. Only disagreement costs.	条件が warp 全体で同じ分岐は、warp を分けません。コストがかかるのは意見が割れたときだけです。
+A bulb sits 3 columns right and 4 rows down from the centre, and the radius is 5. Where is it?	電球が中心から右へ 3 列、下へ 4 行の位置にあり、半径は 5 です。この電球はどこにある？
+A circuit has exactly one PIXEL. There is no 'draw the top, then draw the left': every condition must be merged before the single write.	回路の PIXEL はちょうど 1 つ。「上の辺を描いてから左の辺を描く」ことはできません。すべての条件は、その一度きりの書き込みの前にまとめておく必要があります。
+A counter that wraps needs a picture that wraps with it. Take the remainder after the subtraction, not before.	回り込むカウンタには、同じように回り込む画面が必要です。余りは引き算の前ではなく、後に取ります。
+A few rounds of asking, and everyone knows their place.	何度か尋ね合えば、みんな自分の順番がわかる。
+A hazard is a read that comes before the write it depends on. Without an interlock, it fails silently with an old value.	ハザードとは、依存する書き込みより先に読み出しが来てしまうことです。インターロックがなければ、エラーも出さずに古い値を読みます。
+A hidden case fails: the rule fits the examples, not every input.	隠しケースが不合格：規則が例には合っても、すべての入力には合っていない。
+A kernel is as long as its longest chain of dependent results. Scheduling fills the gaps around it; only a shorter chain makes it faster.	カーネルの長さは、依存し合う結果の最も長い連鎖で決まります。スケジューリングはその周りの隙間を埋めるだけで、速くするには連鎖そのものを短くするしかありません。
+A launch of many threads is cut into warps of 32. Knowing which warp and lane you are is how a thread finds its work.	多数のスレッドを起動すると、32 個ずつの warp に切り分けられます。自分がどの warp のどのレーンかを知ることで、スレッドは自分の仕事を見つけます。
+A load whose address comes from another load. Two small tables drew a whole screen.	別の読み込みからアドレスを得る読み込み。2 つの小さな表だけで画面全体を描きました。
+A loop with a different trip count per lane runs as long as its longest lane. Early finishers are masked, not freed.	レーンごとに繰り返し回数が違うループは、いちばん長いレーンが終わるまで続きます。先に終わったレーンはマスクされるだけで、解放されません。
+A mask stops a lane from writing, not from being read. Shuffle from a masked lane and you get stale data.	マスクはレーンの書き込みを止めますが、読み出されるのは止めません。マスクされたレーンからシャッフルすると、古いデータが返ってきます。
+A mix of both	両方が混ざる
+A new best for this level.	このステージの新記録。
+A part cannot feed its own input — every pixel needs an answer in one pass.	部品は自分の入力に自分の出力をつなげません——どのピクセルも 1 回の計算で答えを出す必要があります。
+A pixel kernel cannot skip pixels; every thread reads the position and tests itself. That is the price of 'one rule for all'.	ピクセルカーネルはピクセルを飛ばせません。全スレッドが位置を読み、自分自身を判定します。それが「全員に同じルール」の代償です。
+A pixel shader returns one colour per pixel. Shapes are combined inside the shader — with min, max, multiply and select — not by drawing over them.	ピクセルシェーダーは 1 ピクセルにつき 1 色を返します。図形は上から重ね描きするのではなく、シェーダーの中で min、max、乗算、選択を使って組み合わせます。
+A pixel sits outside the triangle but inside its bounding box. What do the three edges say?	あるピクセルは三角形の外にありますが、バウンディングボックスの中にあります。3 本の辺は何と答えるでしょう？
+A real water-level board would read sensor data from memory; Lumen's blueprints only see X, Y, ADDR and CLOCK.	本物の水位ボードならセンサー値をメモリから読むが、Lumen の設計図が見られるのは X、Y、ADDR、CLOCK だけ。
+A running total looks hopelessly serial. Doubling the look-back distance makes it five steps.	累積和はどう見ても逐次処理に思えます。さかのぼる距離を倍々にすれば、5 ステップで済みます。
+A shifted right by B: A ÷ 2^B, rounding down.	A を B ビット右シフト：A ÷ 2^B（切り捨て）。
+A shuffle past the end of the warp does not fail. It lands on the far side and returns a perfectly valid, wrong number.	warp の端を越えるシャッフルは失敗しません。反対側に着地して、形式上は正しい、しかし間違った数を返します。
+A stripe of light sweeps the Grid Hall sign: two columns of colour 10 on black, one column to the right per frame, wrapping round the edge.\nThe old wiring keeps its counter at 15 and the stripe tears at the seam: a column goes missing.\nFirst point at the first wrong bulb, then mend the circuit.	光の帯がグリッドホールの看板を横切ります：黒地に色 10 の 2 列が、1 フレームごとに右へ 1 列進み、端で反対側へ回り込みます。\n旧配線ではカウンタが 15 で止まり、帯が継ぎ目で裂けます：1 列が消えます。\nまず最初に間違っている電球を指し示し、それから回路を直してください。
+A triangle is the set of pixels on the same side of three lines. Each pixel asks the question by itself, in parallel.	三角形とは、3 本の直線すべてについて同じ側にあるピクセルの集まりです。各ピクセルがこの問いを自分で、並列に問います。
+A turnstile counts people: a reading below 500 means someone walked in (+1), otherwise someone walked out (−1). Write the new count to out[lane].\nThe old program branches with IF/ELSE and is correct, but it spends 8 cycles. The turnstile allows 6.\nWhen both answers are cheap, compute both and keep one.	回転ドアが人数を数えます：読み値が 500 未満なら誰かが入った（+1）、そうでなければ誰かが出た（−1）という意味です。新しい人数を out[lane] に書いてください。\n旧プログラムは IF/ELSE で分岐していて結果は正しいのですが、8 サイクルかかります。回転ドアが許すのは 6 です。\n答えがどちらも安く求まるなら、両方を計算して片方を残しましょう。
+A vote is one answer for the whole warp, so every lane gets the same result. That is why it can replace a loop of 32 checks.	投票は warp 全体で答えが 1 つなので、どのレーンにも同じ結果が返ります。だから 32 回の検査ループの代わりになるのです。
+A warp forks by masking, runs both paths, and rejoins at ENDIF. Work after the join runs for everyone.	warp はマスクで分岐し、両方の道を実行して ENDIF で合流します。合流後の処理は全レーンで実行されます。
+A warp's first thread is warp·32, i.e. warp SHL 5. Load the reference from that address.	warp の先頭スレッドは warp·32、つまり warp SHL 5 です。このアドレスから基準を読み込みます。
+A, because it is nearer	A。より近いから
+A=B outputs 1 when its inputs match and 0 otherwise. Compare ADDR with 53.	A=B は 2 つの入力が等しいとき 1、それ以外は 0 を出力します。ADDR を 53 と比較しましょう。
+ADD AN INSTRUCTION	命令を追加
+ADDR = y·16 + x = 3·16 + 5 = 53. Memory is one long line; the screen folds it into rows.	ADDR = y·16 + x = 3·16 + 5 = 53。メモリは 1 本の長い列で、画面がそれを行ごとに折り返しているだけです。
+ADDR AND 0xEE keeps every bit of y·16 + x except the lowest bit of each. Which bulbs give 0x22?	ADDR AND 0xEE は y·16 + x のビットをすべて残し、x と y それぞれの最下位ビットだけを落とします。0x22 になるのはどの電球？
+ADDR → A=B (B = 53) → MUL (B = 7) → PIXEL. The chosen bulb gets 1×7 = 7; all others 0×7 = 0.	ADDR → A=B（B = 53）→ MUL（B = 7）→ PIXEL。選ばれた電球は 1×7 = 7、それ以外はすべて 0×7 = 0 になります。
+ADDRESS	アドレス
+AND 15 is a free modulo only because 16 is a power of two; other sizes need a real division, which OC-1 does not have.	AND 15 が無料の剰余になるのは 16 が 2 のべき乗だからです。ほかのサイズでは本物の除算が必要ですが、OC-1 にはありません。
+AND d, a, b — bitwise and.	AND d, a, b — ビットごとの AND。
+AND with 3 keeps the low two bits: the column inside the table is x AND 3, the row is y AND 3. Index = row·4 + column.	AND 3 は下位 2 ビットを残します：表内の列は x AND 3、行は y AND 3。添字 = 行·4 + 列。
+ASKED BY	依頼人
+About 160	約 160
+About 40	約 40
+About 8	約 8
+About a quarter	約 4 分の 1
+About half	約半分
+Academy examiner	科学院の審査官
+Add SHL r1, x, 1 after the first LD and shift by r1 instead of x.	最初の LD の後に SHL r1, x, 1 を追加し、x ではなく r1 でシフトします。
+Adding 32 numbers took five steps, not thirty-one. Parallelism changes the shape of an algorithm.	32 個の数の合計に、31 ステップではなく 5 ステップ。並列化はアルゴリズムの形そのものを変えます。
+Address 49 is row 3, column 1. Rows sit end to end in memory, so running off one row walks into the next.	アドレス 49 は行 3・列 1 です。行はメモリ上で切れ目なく並んでいるので、1 行をはみ出すと次の行に入り込みます。
+After each SHFL: SETP.GT p0, lane, 0 and SEL r1, p0, r1, 0 for the left neighbour; SETP.LT p1, lane, 31 and SEL r3, p1, r3, 0 for the right.	SHFL のたびに：左隣には SETP.GT p0, lane, 0 と SEL r1, p0, r1, 0、右隣には SETP.LT p1, lane, 31 と SEL r3, p1, r3, 0 を使います。
+After the given step each lane has 2 readings. What would a second, identical-looking step at distance 2 give?	与えられたステップの後、各レーンは 2 つの読み値の和を持っています。距離 2 で同じ形のステップをもう 1 つ行うと、どうなるでしょう？
+After the steps at distance 1 and 2, how many readings does lane 7 hold the sum of?	距離 1 と距離 2 のステップの後、レーン 7 はいくつの読み値の和を持っているでしょう？
+Ali	アリ
+All 256 — each asks 'am I under it?'	256 個すべて——それぞれが「自分はその下？」と問う
+All 32 lanes	32 レーンすべて
+All 32 lanes read the same mode, so the branch condition is the same in every lane. How much of the IF/ELSE does the warp issue?	32 レーンすべてが同じモードを読むので、分岐条件はどのレーンでも同じです。warp は IF/ELSE のどれだけを発行する？
+All three agree	3 本とも意見が一致する
+All three are zero	3 本とも 0
+An IF in a warp does not jump. It switches lanes off, and the warp keeps marching.	warp 内の IF はジャンプしません。一部のレーンを止めるだけで、warp は進み続けます。
+An IF on the row is a fine first draft. Then open the Warp River: count the slots each warp spends inside the IF and the ELSE.	まずは行で IF を書いてもかまいません。それから Warp River を開いて、各 warp が IF と ELSE の中で使うスロットを数えましょう。
+An error	エラー
+An instruction reads r6 two beats after the load into r6 issued. What does it get?	r6 への読み込みを発行してから 2 拍後に、ある命令が r6 を読みます。何が得られるでしょう？
+Any d < 4	d < 4 ならどれでも
+Arcade Night	アーケードナイト
+Architect	アーキテクト
+Arithmetic instead of branches	分岐の代わりに算術を
+Arrow keys, or click the screen. Only the ROM changes — the kernel is the same.	矢印キーか、画面をクリック。変わるのは ROM だけで、カーネルは同じです。
+Asking "does anyone, does everyone?" costs one instruction, not a loop over the lanes.	「誰かいる？ 全員そう？」と尋ねるのは 1 命令で済み、レーンを回るループは要りません。
+At frame 15 the stripe's head is on column 15 and the stripe is two columns wide. Which columns should be lit?	フレーム 15 では、帯の先頭は 15 列目にあり、帯の幅は 2 列です。どの列が点灯するべき？
+At frame 21, which row should be lit?	フレーム 21 では、どの行が光るべきでしょう？
+At least one disagrees with the others	少なくとも 1 本がほかと食い違う
+Atlas · Gen 4	Atlas · 第4世代
+A≥B with r² on A and the squared distance on B, then MUX: 1 → 11, 0 → 1. Use ≥, not >: bulbs on the rim are part of the disc.	A≥B の A に r²、B に距離の二乗をつなぎ、MUX へ：1 口 = 11、0 口 = 1。> ではなく ≥ を使います：円の縁にある電球も円盤の一部です。
+B is the same question with different numbers. Can the A block be reused?	B は数字が違うだけの同じ問いです。A のブロックを使い回せますか？
+B, because it came last	B。最後に描いたから
+BEAT	拍
+Back to the bench	作業台に戻る
+Back to the first step	最初のステップに戻る
+Beat 2, the very next one	2 拍目、すぐ次の拍
+Beat 4, three beats later	4 拍目、3 拍後
+Best ever,	過去最高：
+Bitwise A and B. AND 15 keeps the low four bits.	A と B のビットごとの AND。AND 15 は下位 4 ビットを残します。
+Black	黒
+Black Stripes	黒い縞
+Block structure broken at line	ブロック構造が崩れている行：
+Both sides	両側
+Both sides only pick numbers: a step of +frame or −frame, a colour of 12 or 6. SEL picks without diverging.	どちらの側も数を選ぶだけです：歩幅は +frame か −frame、色は 12 か 6。SEL なら発散せずに選べます。
+Both sides, one after the other	両方を順番に
+Both sums can ride in one register: water + (load SHL 16). Add up the packed value with the butterfly, then split it with AND 65535 and SHR 16.	2 つの合計は 1 つのレジスタに同居できます：水 + (荷 SHL 16)。パックした値をバタフライで足し上げ、AND 65535 と SHR 16 で分けます。
+Boundaries wrap silently	境界は黙って回り込む
+Bounds are your job	境界はあなたの責任
+Branch on the mode instead of selecting on it. If no lane takes a side, the warp skips that side completely.	モードで選ぶのではなく、モードで分岐します。ある側に入るレーンがなければ、warp はその側をまるごと飛ばします。
+Branch-free selection	分岐なしの選択
+Brief	課題
+Build and test every case. Enter / F5	ビルドして全ケースをテスト。Enter / F5
+Build it in layers, like the sign itself: a sky-or-water colour first, then the lamp over it, then the frame over everything.	看板そのものと同じく、レイヤーを重ねて組みましょう：まず空か水かの色、その上に船灯、最後に全体の上に額縁。
+Bulb (0,0) lies on the top edge and on the left edge. How many times does it write PIXEL?	電球 (0,0) は上の辺にも左の辺にも乗っています。PIXEL を何回書く？
+Bulbs are numbered row by row, 16 per row. What is the ADDR of bulb (5,3)?	電球は行ごとに、1 行 16 個ずつ番号が振られています。電球 (5,3) の ADDR はいくつ？
+CASE	ケース
+CLICK A COLUMN TO REWIND	列をクリックで巻き戻し
+CLOCK grows past 15. AND with 15 keeps only its last four bits — always a row 0..15.	CLOCK は 15 を超えて増えていきます。15 と AND を取れば下位 4 ビットだけが残り、必ず 0..15 の行になります。
+CLOCK → AND (B = 15) → into A=B's B port, Y into its A port → MUL (B = 10) → PIXEL.	CLOCK → AND（B = 15）→ A=B の B ポートへ、Y を A ポートへ → MUL（B = 10）→ PIXEL。
+COMMISSION	依頼
+COMPARISON	比較
+COUNT	回数
+CUDA exposes threadIdx, blockIdx and the lane id; the warp a thread belongs to is just its index divided by 32.	CUDA は threadIdx、blockIdx、レーン番号を公開しています。スレッドが属する warp は、その番号を 32 で割ったものにすぎません。
+CUDA's __all_sync and __any_sync, and ballot in other APIs, let a warp agree on a condition in a single cycle.	CUDA の __all_sync と __any_sync、ほかの API の ballot を使うと、warp が 1 サイクルで条件について合意できます。
+CUDA's __shfl_sync and similar instructions on every vendor move data between lanes in a single cycle.	CUDA の __shfl_sync をはじめ、各社 GPU の同種の命令は、1 サイクルでレーン間のデータを受け渡します。
+CUDA's shuffle functions take an explicit participation mask because reading from an inactive lane gives undefined results.	CUDA のシャッフル関数は参加マスクを明示的に受け取ります。動作していないレーンからの読み出しは、結果が未定義になるからです。
+CUDA's shuffles return the caller's own value for out-of-range lanes; OC-1 wraps, to make the trap easy to see.	CUDA のシャッフルは範囲外のレーンに対して呼び出し側自身の値を返します。OC-1 は罠が見えやすいように回り込ませます。
+CYCLES	サイクル
+Cabinet 7 flickers. It has two screens' worth of memory: out[0..256] and out[256..512].\nWhile the beam shows buffer (CLOCK AND 1), the kernel must draw rom's new picture into the other one.\nFind why the beam catches half-drawn frames — and fix it.	7 番筐体がちらついています。画面 2 枚ぶんのメモリがあります：out[0..256] と out[256..512]。\nビームがバッファ (CLOCK AND 1) を表示している間に、カーネルは rom の新しい絵をもう一方に描かなければなりません。\nビームが描きかけのフレームを拾ってしまう原因を突き止め、直してください。
+Caravan guide	キャラバンの案内人
+Case	ケース
+Cen Li	岑理
+Chase the stars you missed.	取り逃した星を集めましょう。
+Clear	クリア
+Click a cell to probe its thread.	セルをクリックして、そのスレッドを調べます。
+Clinic doctor	診療所の医師
+Closes a block.	ブロックを閉じます。
+Coalescing and Shared Memory	コアレッシングと共有メモリ
+Colours that are not in the picture, borrowed from neighbours.	絵にない色は、隣から借りてくる。
+Column 15 only	15 列目だけ
+Columns 15 and 0	15 列目と 0 列目
+Columns 15 and 16	15 列目と 16 列目
+Commission	依頼
+Commit to an answer. You will see why when you run it.	まず答えを決めてください。実行すれば理由がわかります。
+Compare squares	二乗で比べる
+Compare the two buffers after a run. Which one did the kernel write — and which one is on screen?	実行後に 2 つのバッファを見比べましょう。カーネルが書いたのはどちらで、画面に出ているのはどちら？
+Compare the wrong picture with the right one. Which tile ended up where? The tiles themselves are intact.	間違った画面と正しい画面を見比べてください。どのタイルがどこに行った？ タイル自体は壊れていません。
+Compared with the IF/ELSE, which instructions does the SEL version drop?	IF/ELSE と比べて、SEL 版はどの命令を省いている？
+Compositing	合成
+Compute all three addresses first, issue all four loads, then add in pairs: (a + b) + (c + d).	まず 3 つのアドレスを計算し、4 つの読み込みを続けて発行してから、2 つずつ足します：(a + b) + (c + d)。
+Compute both candidates into two registers, with no branch at all, and let SEL pick per lane with the predicate.	分岐は一切使わず、2 つの候補を 2 つのレジスタに計算しておき、SEL にプレディケートでレーンごとに選ばせます。
+Compute, Then Look Up	計算して、引く
+Constant selected: type digits, − flips the sign. Or wire an output into it.	定数を選択中：数字を入力、− で符号反転。出力をつなぐこともできます。
+Continue	つづきから
+Copy the step four times, changing both 1s (in SUB and in SETP.GE) to 2, 4, 8, 16. ST stays last.	このステップを 4 回コピーし、2 つの 1（SUB と SETP.GE の中）をそれぞれ 2、4、8、16 に変えます。ST は最後のまま。
+Correct, but over the limit:	正解ですが上限超過：
+Count how often the same address is loaded across the warp. Each lane already holds one of those values in a register.	同じアドレスが warp 全体で何回読まれているか数えてください。各レーンのレジスタには、それらの値のうち 1 つがすでに入っています。
+Count what the IF, the ELSE and the ENDIF do for the answer. They compute nothing.	IF、ELSE、ENDIF が答えのために何をしているか数えてください。何も計算していません。
+DESTINATION	格納先
+Data parallelism	データ並列
+Delete	削除
+Deleting a block keeps its body.	ブロックを削除しても中身は残ります。
+Divergence and reconvergence	発散と再収束
+Divergence costs both sides	発散は両側の代金を払う
+Divergence has a price	発散には代償がある
+Does not build.	ビルドできません。
+Done	完了
+Double buffering	ダブルバッファ
+Douya	豆芽
+Dr. Bohe	ハッカ先生
+Drag from a part's right dot to a port to wire it. Pull a wire off a port to unplug it.	部品の右側の点からポートへドラッグして配線します。ポートから線を引き抜けば外れます。
+Draw order knows nothing about distance. Faces that pass through each other have no order that is right everywhere.	描画順は距離について何も知りません。互いを貫く面には、どこでも正しい順番というものが存在しません。
+Dropping the low bit merges 2 and 3. One AND and one compare test a 2×2 square — no separate row and column tests.	最下位ビットを落とすと 2 と 3 がひとつにまとまります。AND 1 回と比較 1 回で 2×2 の正方形を判定できます——行と列を別々に調べる必要はありません。
+Duplicate the A block with 4, 5, 6, 7 and SHR into r9. Then SHL r9, r9, 1; ADD r8, r8, r9; ADD r8, r8, 11; LD r8, [r8]; PIX r8.	A のブロックを複製してアドレスを 4、5、6、7 に変え、SHR の結果を r9 へ。続けて SHL r9, r9, 1; ADD r8, r8, r9; ADD r8, r8, 11; LD r8, [r8]; PIX r8。
+EACH COLUMN IS ONE WARP-INSTRUCTION · NEWEST AT THE RIGHT	各列が 1 つの warp 命令 · 最新は右端
+EDGE d, [a] — Prism's raster unit: d = rom[a]·x + rom[a+1]·y + rom[a+2] at this pixel.	EDGE d, [a] — Prism のラスタユニット：このピクセルで d = rom[a]·x + rom[a+1]·y + rom[a+2] を計算します。
+EDIT	編集
+ELSE flips the mask to the lanes that did not take the IF. Inside it you can test again, with a second predicate and a second IF/ELSE.	ELSE はマスクを、IF に入らなかったレーンに反転します。その中で、2 つ目のプレディケートと 2 つ目の IF/ELSE を使って、もう一度判定できます。
+ELSE — the other lanes run now; the first group waits.	ELSE — 今度は残りのレーンが実行し、最初のグループは待機します。
+EVERY BULB	すべての電球
+Each lane can say yes or no about its own well. You need a way to combine all 32 answers.	各レーンは、自分の井戸について「はい」か「いいえ」を言えます。32 個の答えをまとめる方法が必要です。
+Each lane holds a number from 1 to 9 in rom[lane]. Count how many Collatz steps it takes to reach 1 (odd → 3n + 1, even → n / 2) and write the count to out[lane]. A number already at 1 takes 0 steps.\nNo number up here needs more than 20. The old program counts all 20 rounds in every lane — including the rounds after a lane has arrived.	各レーンは rom[lane] に 1 から 9 の数を持っています。それが 1 になるまでに何ステップのコラッツ変換が必要か（奇数 → 3n + 1、偶数 → n / 2）を数え、その回数を out[lane] に書いてください。最初から 1 の数は 0 ステップです。\nここにはどの数も 20 を超えません。旧プログラムはどのレーンも 20 周すべてを数えます——到達した後の周も含めて。
+Each layer is one MUX whose 0 port takes the layer below. The frame test from The Frame and the water test from Upside-Down Water Level both still work.	各層は MUX 1 つで、その 0 番ポートが下の層を受ける。「額縁」の枠テストも「逆さの水位」の水位テストも、そのまま使える。
+Each machine tells you what it should show. Before you build, I will ask you to predict. Then wire it, run it, and watch every lane of the machine in the Warp River.	各マシンは、何を表示すべきかを教えてくれる。組む前に、私が予想を尋ねる。そのあと配線して実行し、Warp River でマシンの全レーンを見届けよう。
+Each of the three answers is something a warp can compute in a few steps you already know: two sums and one vote.	3 つの答えはどれも、すでに知っているいくつかのステップで warp が計算できます：2 つの合計と 1 回の投票です。
+Each pixel decides alone. How many pixels need to know where the whole sprite is?	各ピクセルは単独で判断します。スプライト全体の位置を知る必要があるピクセルはいくつ？
+Each pixel is 2 bits wide, so pixel x starts at bit 2x, not bit x.	1 ピクセルは 2 ビット幅なので、ピクセル x はビット x ではなくビット 2x から始まります。
+Each thread knows tid, warp and lane. Which of them tells you where your block's reference sits?	各スレッドは自分の tid、warp、lane を知っています。どれが、自分のブロックの基準の場所を教えてくれる？
+Early MIPS chips had a load delay slot, and VLIW DSPs and GPUs exposed latency to the compiler. Instruction schedulers still reorder code to hide it.	初期の MIPS チップにはロード遅延スロットがあり、VLIW の DSP や GPU もレイテンシをコンパイラに任せていました。今でも命令スケジューラはコードを並べ替えてレイテンシを隠しています。
+Ed Catmull described the Z-buffer in 1974; by the late 1990s every consumer 3D card had one in hardware, with early-Z rejecting hidden pixels before shading.	Ed Catmull は 1974 年に Z バッファを考案しました。1990 年代末には、どの民生用 3D カードもハードウェアで Z バッファを備え、early-Z でシェーディング前に隠れたピクセルを捨てていました。
+Edge functions	エッジ関数
+Engineer	エンジニア
+Enter the Grid Hall	グリッドホールへ入る
+Escape Time	エスケープタイム
+Evaluate all three edges. Inside is "all positive" for one winding and "all negative" for the other.	3 本の辺をすべて計算しましょう。頂点の並び順によって、内側は「すべて正」にも「すべて負」にもなります。
+Every GPU keeps a per-warp execution mask in hardware; predicated stores are how kernels handle ragged edges.	どの GPU もハードウェアで warp ごとの実行マスクを持っています。プレディケート付きの書き込みは、カーネルが半端な端を処理する定番の方法です。
+Every bulb asks the same question. Which question is true only for (5,3)?	どの電球も同じ問いを立てます。(5,3) のときだけ真になる問いは？
+Every bulb in row 2	2 行目のすべての電球
+Every case passes:	全ケース合格：
+Every game swaps a back buffer each frame; v-sync times the swap to the display's refresh.	どのゲームも毎フレーム裏バッファを入れ替えます。垂直同期は、その入れ替えをディスプレイの更新に合わせます。
+Every lane already knows its own number. What if each lane handled one star?	どのレーンも自分の番号を知っています。各レーンが星を 1 つずつ受け持ったら？
+Every other cell	1 つおきのマス
+Every register it reads had already landed.	読んだレジスタはどれも、すでに届いていました。
+Every result is ready on the next beat.	どの結果も次の拍には使える。
+Every transform here pivots on 0. Where is 0, and where is the tower's axis?	ここの変換はすべて 0 を軸に回る。0 はどこ？風塔の中心軸はどこ？
+Every warp issues both sides	どの warp も両側を発行する
+Evidence found	証拠を見つけた
+Exactly on the rim	ちょうど縁の上
+FAULT	故障
+FIND	探す：
+FROM LANE	読み出し元レーン
+Face B is drawn after face A. Where A is nearer, what does the painter's starter show?	面 B は面 A の後に描かれます。A のほうが近い場所では、画家のアルゴリズムによる最初のコードは何を映す？
+Fast arithmetic is useless if the data is late.	いくら速く計算しても、データが届かなければ意味がない。
+Fault	故障
+Fault report: the cabinet's level 3 renders, but it looks mirrored along the diagonal — rooms are where the corridors should be.\nThe map and tiles are the same as before. The tile pixels are fine; the map lookup is not. Find the cell that picks the wrong tile.	故障報告：筐体のレベル 3 は描画されますが、対角線に沿って鏡映しになっています——廊下があるはずの場所に部屋があります。\nマップとタイルは以前と同じです。タイル内のピクセルは正しく、間違っているのはマップの参照です。間違ったタイルを選んでいるマスを探してください。
+Fault report: the fence sensors are a line, not a ring. Each reports itself plus its left and right neighbour: out[l] = rom[l−1] + rom[l] + rom[l+1], where a post past either end counts as 0.\nThe smoothing program works in the middle, but the two end posts report nonsense.\nFind what the end lanes borrow.	故障報告：フェンスのセンサーは輪ではなく、一直線に並んでいます。各センサーは自分と左右の隣の合計を報告します：out[l] = rom[l−1] + rom[l] + rom[l+1]。どちらかの端の外側にある見張りは 0 として数えます。\n平滑化プログラムは中ほどでは動きますが、両端の見張りがでたらめな値を報告します。\n端のレーンが何を借りているか探してください。
+Fault report: the relay ring has 32 posts. A flagged post (rom[32 + lane] = 1) reports its own reading plus its next neighbour's, but only if that neighbour is flagged too; otherwise just its own. Unflagged posts report nothing: their out cell stays 0.\nThe relay program adds a reading that should not be there. Find who is lending it.	故障報告：中継リングには 32 の見張りがいます。フラグの立った見張り（rom[32 + lane] = 1）は自分の読み値に次の隣の読み値を足して報告しますが、隣にもフラグが立っているときだけです。そうでなければ自分の分だけです。フラグのない見張りは何も報告せず、その out の欄は 0 のままです。\n中継プログラムは、あるはずのない読み値を足しています。誰が貸しているのか探してください。
+Fetch the sprite pixel like in The Sprite, force it to 0 outside the box, then SETP.NE on it to pick sprite or level.	「スプライト」のときと同じようにスプライトのピクセルを取り出し、枠の外では 0 にしてから、それに SETP.NE をかけてスプライトかステージかを選びます。
+Fewer parts: ask the opposite. (X + 1) AND 14 is 0 only for columns 0 and 15. Inside means both X's and Y's version are non-zero.	部品を減らすなら、逆を問いましょう。(X + 1) AND 14 が 0 になるのは 0 列目と 15 列目だけです。「内側」とは、X と Y の両方でこの値が 0 でないことです。
+Fill the gap with work that does not need the result: the other addresses and the other loads.	結果を必要としない仕事で隙間を埋めましょう：ほかのアドレス、ほかの読み込み。
+Find coverage for both faces first, as in the last level. Then ask the depth question per pixel, not per face.	前のステージと同じく、まず両方の面のカバレッジを求める。そのうえで、深度は面ごとではなくピクセルごとに問うこと。
+Finish the chapter before it first.	先に前の章を終わらせよう。
+Five	5 回
+Fixed — now show ORI why	直った——次は ORI に原因を示そう
+Fixed. Now reset, run the starter and point at the cause.	直った。初期回路に戻して実行し、原因を指し示そう。
+Flipping to 16 − Y loses a row: row 15 becomes 1, not 0. Ask instead whether Y + h reaches 16.	16 − Y に反転すると 1 行ずれます：15 行目が 0 ではなく 1 になってしまいます。代わりに、Y + h が 16 に届くかを問いましょう。
+For non-negative numbers, d ≤ r holds exactly when d² ≤ r². Compare squares and the root disappears.	負でない数では、d ≤ r は d² ≤ r² のときちょうど成り立ちます。二乗で比べれば、平方根は消えます。
+For short branches, computing both sides and selecting skips the mask bookkeeping, and nothing diverges.	短い分岐なら、両側を計算して選ぶほうが、マスクの管理を省けて、発散も起きません。
+Four times	4 回
+Four times — once per edge test	4 回——辺の判定ごとに 1 回
+Fractal escape times, ray marching and iterative solvers all have this shape; one slow pixel holds up its whole warp.	フラクタルのエスケープタイム、レイマーチング、反復ソルバーはどれもこの形をしています：遅いピクセルが 1 つあると、その warp 全体が足止めされます。
+Frame, lamp, water and sky never overlap on screen because every bulb chose its layer before its single write.	額縁、船灯、水、空が画面上で重なり合わないのは、どの電球も一度きりの書き込みの前に自分のレイヤーを選んでいたからです。
+Frames and the clock	フレームと時計
+Front and Back	手前と奥
+Fullscreen	フルスクリーン
+GPU compilers insert reconvergence points just like ENDIF; misplaced work inside a branch is a classic kernel bug.	GPU コンパイラは ENDIF と同じような再収束点を挿入します。分岐の中に処理を置き間違えるのは、典型的なカーネルのバグです。
+GPU compilers turn small if/else blocks into predicated or select instructions on their own.	GPU のコンパイラは、小さな if/else ブロックを自分でプレディケート命令やセレクト命令に書き換えます。
+GPU kernels start with `if (x >= width) return;`. Texture units clamp or wrap so shaders need not.	GPU カーネルは `if (x >= width) return;` から始まるのが定番です。テクスチャユニットが座標をクランプやラップしてくれるので、シェーダーはそれを省けます。
+GPUs blend layers in dedicated hardware (ROPs); old consoles had sprite chips that did exactly your SEL.	GPU は専用ハードウェア（ROP）でレイヤーを合成します。昔のゲーム機のスプライトチップがしていたことは、まさにあなたの SEL です。
+Games hand every shader a time or frame value each frame; animation is the same kernel re-run with new inputs.	ゲームは毎フレーム、時刻やフレーム番号を全シェーダーに渡します。アニメーションとは、同じカーネルを新しい入力で実行し直すことです。
+Give an uncovered face a depth farther than anything: SEL r6, p0, r6, 9999. Then the nearer depth decides the colour.	覆っていない面には、どれよりも遠い深度を与えます：SEL r6, p0, r6, 9999。あとは近いほうの深度が色を決めます。
+Grandpa Juye	橘じい
+Grandpa Juye wants a frame around the sign: colour 9 on the outermost ring of bulbs, colour 2 everywhere inside.\nEach bulb writes PIXEL exactly once, so one rule has to cover all four edges at the same time.	橘じいが看板に枠をつけたがっている。いちばん外側の電球の輪は色 9、その内側はすべて色 2。\n各電球が PIXEL に書くのは 1 回だけ。だから 1 つの規則で四辺すべてをまかなう必要がある。
+Grandpa Juye's commission: the station sign, all in one circuit.\nA colour-9 frame on the outer ring. Inside, rows with Y + (CLOCK AND 7) ≥ 14 are water (12), the rest sky (1).\nThe camel lamp — bulbs (2..3, 2..3) — shows colour 10 whenever CLOCK AND 8 is not 0. The frame wins over the lamp, the lamp over the water.	橘じいの依頼：駅舎の看板を、1 つの回路で仕上げる。\n外周は色 9 の枠。内側は、Y + (CLOCK AND 7) ≥ 14 の行が水（12）、残りが空（1）。\n駝灯——電球 (2..3, 2..3)——は、CLOCK AND 8 が 0 でないとき色 10 で光る。優先順位は、枠が駝灯より上、駝灯が水より上。
+Granny Yin	銀ばあ
+Graphics APIs disagree: OpenGL puts y = 0 at the bottom, Direct3D and most image formats at the top. Ported shaders flip upside down all the time.	グラフィックス API によって流儀が違います：OpenGL は y = 0 が下、Direct3D やほとんどの画像フォーマットは上です。移植したシェーダーが上下逆さまになるのはよくあることです。
+Grid Hall	グリッドホール
+Grids, Blocks and Stencils	グリッド・ブロック・ステンシル
+HIDDEN	隠し
+Half of the loaded value	読み込んだ値の半分
+Halo and edge handling is the classic stencil bug: the interior is right, the borders quietly are not.	ハローと端の処理は、ステンシル計算の定番のバグです：内側は正しいのに、境界だけがひそかに間違っています。
+Hazards like this hid in hand-scheduled DSP and console code for years: right on one chip revision, black stripes on the next.	この種のハザードは、手作業でスケジュールした DSP やゲーム機のコードに何年も潜んでいました：あるチップのリビジョンでは正しく、次のリビジョンでは黒い縞が出るのです。
+Here both faces live in one kernel, so the buffer is just a register. Real GPUs keep depth in memory and test each fragment against it.	ここでは両方の面が 1 つのカーネルにあるので、深度バッファはただのレジスタです。実際の GPU は深度をメモリに置き、フラグメントごとにそれと比較します。
+Hiding latency	レイテンシの隠蔽
+Hints	ヒント
+How many instructions it has	命令の数
+How many pixels are lit	光るピクセルの数
+Huajuan	花巻
+Huajuan wants the school's Prism to show the wind tower turning, so the children can drag it round and see why the far side goes dark.\nEach row of the tower is a slice of a cylinder. EDGE r, [4y] gives that row's position ×16 into the table at rom[128..288], which turns a screen offset into a surface column v (100 = sky).\nrom[v] is the light on that column, 0 to 7. The paint is red and white bands 8 columns wide that turn with the frame: the band is (v + frame + y) AND 8.\nThe colour is rom[rom[4y+3] + band + light]. Sky cells read colour 1 the same way. Keep it inside a frame of 240 cycles.	ハナマキは、学校の Prism に風塔が回る様子を映したい。子どもたちが引っぱって回し、裏側がなぜ暗くなるのかを確かめられるように。\n塔の各行は円柱の薄切りだ。EDGE r, [4y] はその行の位置 ×16 を返し、rom[128..288] の表を引くと、画面上のオフセットが表面の列 v に変わる（100 は空）。\nrom[v] はその列の明るさで、0〜7。塗装は幅 8 列の赤白の帯で、フレームとともに回る。帯 = (v + frame + y) AND 8。\n色は rom[rom[4y+3] + 帯 + 明るさ]。空のセルも同じ方法で色 1 を読む。1 フレーム 240 サイクル以内に収めること。
+IF p … ENDIF — lanes where p is false sit idle. The warp still issues every line.	IF p … ENDIF — p が偽のレーンは待機します。それでも warp は全行を発行します。
+IF p0 {+100} ELSE { SETP.LT p1, r0, 700 / IF p1 {SHL r0, r0, 1} ELSE {SUB r0, r0, 100} ENDIF } ENDIF, then one ST at the end.	IF p0 {+100} ELSE { SETP.LT p1, r0, 700 / IF p1 {SHL r0, r0, 1} ELSE {SUB r0, r0, 100} ENDIF } ENDIF、最後に ST を 1 回だけ。
+IF, ELSE and ENDIF — both sums still run	IF、ELSE、ENDIF——2 つの計算はそれでも両方走る
+IN RESTORATION	修復中
+INSIGHT CARD	インサイトカード
+ISSUE	発行
+If ? is not 0, pass 1; otherwise pass 0.	? が 0 でなければ 1 側を、そうでなければ 0 側を通します。
+If every step halves the number of partial sums, how many steps reduce 32 numbers to one?	1 ステップごとに部分和の数が半分になるなら、32 個の数を 1 つにするには何ステップ必要？
+If or Select	分岐かセレクトか
+Independent work can hide in the gaps, but a dependent chain can't be shortened by scheduling. Only by making the chain shorter.	依存しない仕事は隙間に隠せますが、依存の連鎖はスケジューリングでは短くなりません。連鎖そのものを短くするしかないのです。
+Indirection	間接参照
+Insert AND r0, r0, 15 right after ADD r0, x, frame.	ADD r0, x, frame の直後に AND r0, r0, 15 を挿入します。
+Inside IF p0 an unflagged neighbour is masked off. A lane asks it for r0 with SHFL. What does it get?	IF p0 の中で、フラグのない隣のレーンはマスクされています。あるレーンが SHFL でその r0 を求めると、何が返ってくる？
+Inside IF p0, only flagged lanes are active. What do the unflagged lanes do meanwhile?	IF p0 の中では、フラグの立ったレーンだけが動きます。その間、フラグのないレーンは何をしている？
+Inside a tile, the pixel is (y AND 3)·4 + (x AND 3). The tile itself starts at 16 + t·16, i.e. (t SHL 4) + 16.	タイル内のピクセルは (y AND 3)·4 + (x AND 3)。タイル自体は 16 + t·16、つまり (t SHL 4) + 16 から始まります。
+Inside means 0 ≤ u < 8 and 0 ≤ v < 8. (u OR v) SHR 3 is 0 only then — negatives keep their sign bit.	内側とは 0 ≤ u < 8 かつ 0 ≤ v < 8 のこと。(u OR v) SHR 3 が 0 になるのはそのときだけです——負の数は符号ビットが残ります。
+Inside means the same side of all three edges. Every corner of the box that the triangle misses lies across at least one edge.	内側とは、3 本の辺すべてについて同じ側にあることです。箱の隅のうち三角形から外れた所は、どれも少なくとも 1 本の辺の向こう側にあります。
+Inside the disc	円の内側
+Inside the loop, test r0 against 1 and put both the step and the count inside an IF on that test. Finished lanes are masked off.	ループの中で r0 を 1 と比べ、その比較を条件とする IF の中に、変換とカウントの両方を入れます。終わったレーンはマスクされます。
+Instructions in the program, or compute nodes in a circuit.	プログラムの命令数、または回路の演算ノード数。
+Issue the three EDGEs back to back so their beats overlap, then nest two IFs around PIX instead of computing a minimum.	3 つの EDGE を続けて発行して待ち時間を重ね、最小値を求める代わりに PIX を 2 重の IF で囲みます。
+It broke here	ここで壊れた
+It does not build yet — see the message above.	まだビルドできません——上のメッセージを見てください。
+It keeps counting	数え続ける
+It leaves the loop early	早めにループを抜ける
+It shows a sprite pixel from the row above	1 行上のスプライトのピクセルが映る
+It sits masked off, waiting	マスクされて、待っている
+It stays black	黒のまま
+It stops paying off when the branches are long: you would run both of them for every lane.	分岐が長くなると割に合わなくなります：どのレーンでも両方を実行することになるからです。
+Its neighbours	隣のレーン
+Its own	自分自身のもの
+Jump to the verdict	結果へ飛ぶ
+Keep the starter's first LD, then: SHL r0, r0, 4; add (y AND 3) SHL 2; add x AND 3; add 16; LD again; PIX. For the size star, (y SHR 2) SHL 2 is just y AND 12.	最初の LD はそのまま残し、続けて SHL r0, r0, 4；(y AND 3) SHL 2 を足す；x AND 3 を足す；16 を足す；もう一度 LD；PIX。サイズの星を狙うなら、(y SHR 2) SHL 2 はただの y AND 12 です。
+Kernel parameters, block-wide flags and loop bounds are uniform; GPUs run branches on them at full speed.	カーネルのパラメータ、ブロック全体のフラグ、ループの回数は一様です。これらにかかる分岐は、GPU でも全速で走ります。
+LANE UTILIZATION	レーン稼働率
+LANES · INPUT rom[lane] · OUTPUT · EXPECTED	レーン · 入力 rom[lane] · 出力 · 期待値
+LD d, [addr] — read the machine's ROM.	LD d, [addr] —— マシンの ROM を読む。
+LD r0 issues on beat 1. From which beat can an instruction of the same warp read the loaded r0?	LD r0 は 1 拍目に発行されます。同じ warp の命令は、何拍目から読み込まれた r0 を読めるでしょう？
+LD r0, [lane]\n	; fold the warp in half, five times | warp を半分に折る、それを 5 回\n
+LD r0, [lane]\nADD r2, lane, 32\nLD r1, [r2]\n	; the check: does every camel carry at most twice its water? | 検査：どのラクダの荷も、水の 2 倍以下か？\n
+LD r0, [lane] / MOV r1, r0, then three times: ADD r2, lane, k / SHFL r3, r0, r2 / ADD r1, r1, r3; finally ST [lane], r1.	LD r0, [lane] / MOV r1, r0、そのあと 3 回：ADD r2, lane, k / SHFL r3, r0, r2 / ADD r1, r1, r3；最後に ST [lane], r1。
+LD r0, [lane]; then five times: XOR r2, lane, k / SHFL r1, r0, r2 / ADD r0, r0, r1 for k = 16, 8, 4, 2, 1; then ST [lane], r0.	LD r0, [lane]；続けて k = 16、8、4、2、1 の順に 5 回：XOR r2, lane, k / SHFL r1, r0, r2 / ADD r0, r0, r1；最後に ST [lane], r0。
+LEVEL STANDARDS	このステージの基準
+LIMIT	上限
+LINE	行
+LOADS	読み込み
+LOCKED	未公開
+LOOP 20 { SETP.NE p0, r0, 1 / IF p0 { the even/odd IF-ELSE, then ADD r1, r1, 1 } ENDIF } ENDLOOP, then ST [lane], r1.	LOOP 20 { SETP.NE p0, r0, 1 / IF p0 { the even/odd IF-ELSE, then ADD r1, r1, 1 } ENDIF } ENDLOOP（内側の波括弧は、偶数/奇数の IF-ELSE のあとに ADD）、最後に ST [lane], r1。
+LOOP n … ENDLOOP — repeat the body n times.	LOOP n … ENDLOOP — 本体を n 回くり返します。
+Lane 0 asks SHFL for lane −1. Which lane's value does it get?	レーン 0 が SHFL でレーン −1 を求めます。どのレーンの値が返ってくる？
+Lane 0 reaches 1 after 3 steps, but the loop runs 20 rounds for the whole warp. What does lane 0 do in the other 17 rounds?	レーン 0 は 3 ステップで 1 に着きますが、ループは warp 全体で 20 周します。レーン 0 は残りの 17 周で何をしている？
+Lane 31's — the request wraps around	レーン 31 のもの——要求は回り込む
+Lane reads from ROM, worst test case.	レーンが ROM から読んだ回数（最悪のテストケース）。
+Lane writes to the output, worst test case.	レーンが出力に書いた回数（最悪のテストケース）。
+Lanes 2, 3, 4 and 5 each reach post 5 once: four loads of one number. The whole warp fetches every value four times.	レーン 2、3、4、5 はそれぞれ 5 番の見張りを 1 回ずつ通ります：同じ数を 4 回読み込むことになります。warp 全体では、すべての値を 4 回ずつ取ってきています。
+Lanes land on both sides of an IF/ELSE. The IF part has 3 instructions, the ELSE part has 2. How many instructions does the warp issue for the two parts together?	レーンが IF/ELSE の両側に分かれています。IF 部は 3 命令、ELSE 部は 2 命令です。warp は両方合わせて何命令を発行する？
+Lanes trade registers directly inside the warp. Memory is never touched.	レーンは warp の中でレジスタを直接やり取りします。メモリには一切触れません。
+Language	言語
+Late-1990s consoles and cards did this per vertex in fixed point, often with reciprocal tables. Hardware transform and lighting arrived on PC cards in 1999.	1990 年代末のゲーム機やカードは、これを頂点ごとに固定小数点で、しばしば逆数表を使って計算していました。PC のカードにハードウェア T&L が載ったのは 1999 年です。
+Late-90s 3D cards rendered cylinders, skies and sprites through lookup tables exactly like these, because a table read was cheaper than a sine.	90 年代末の 3D カードは、まさにこういう表で円柱や空やスプライトを描いていました。表を 1 回読むほうが、sin を計算するより安かったからです。
+Layers in one pass	1 回のパスで全レイヤーを
+Layers, transparency and a per-pixel choice: the arcade's whole visual trick, in one kernel.	レイヤー、透明、そしてピクセルごとの選択：アーケードの視覚トリックのすべてが、ひとつのカーネルに。
+Let d = X − left edge. For which d is a pixel inside the block's columns?	d = X − 左端 とします。ピクセルがブロックの列に入るのは、d がどの値のとき？
+Level unlocked	新ステージ解放
+Levels cleared	クリア済みステージ
+Lights on. Good — you came.\nI am ORI. I slept inside the grid pattern until a machine could run me. This hall is empty, and every machine in it is yours to rebuild.	灯がついた。よく来てくれた。\n私は ORI。マシンが私を動かせるようになるまで、格子模様の中で眠っていた。このホールは空っぽで、ここにあるマシンはすべて、君が組み直すためのものだ。
+Line	行
+Listing	アセンブリ
+Load once, share many	1 回読んで、みんなで使う
+Load rom[lane] once. For k = 1, 2, 3 take the r0 of lane + k with SHFL and add it up.	rom[lane] を 1 回だけ読み込みます。k = 1、2、3 について、SHFL でレーン lane + k の r0 を取り、足し上げます。
+Load the flag from [lane + 32], SETP.NE p0 against 0, then wrap the starter's three lines in IF p0 … ENDIF.	[lane + 32] からフラグを読み、SETP.NE p0 で 0 と比較してから、最初のコードの 3 行を IF p0 … ENDIF で囲みます。
+Look at lanes 0 and 31 only. What does each of them ask SHFL for, and what answers?	レーン 0 と 31 だけを見てください。それぞれ SHFL に何を求め、誰が答えますか？
+Looser tolerances; mechanism hints open at once.	許容範囲はゆるめ。仕組みのヒントはすぐに開けます。
+Lumen + cartridge	Lumen + カートリッジ
+Lumen · Gen 1	Lumen · 第1世代
+Lumen, full load	Lumen 全力運転
+Lyra · Gen 5	Lyra · 第5世代
+MACHINE REBUILT	マシン復元完了
+MAX d, a, b — the larger one.	MAX d, a, b — 大きいほう。
+MIN d, a, b — the smaller one.	MIN d, a, b — 小さいほう。
+MIN r0, r0, r1\n	SUB r2, r2, x       ; x1 - x, needs >= 1 | x1 - x、>= 1 が必要\n
+MODE	モード
+MOV d, a — copy a value into register d.	MOV d, a — 値をレジスタ d にコピーします。
+MOVE THE HERO	主人公を動かす
+MUX picks input 1 when '?' is non-zero. (X − edge) SHR 2 is non-zero exactly when the column is outside.	MUX は「?」が 0 でないとき入力 1 を選びます。(X − 端) SHR 2 が 0 でないのは、ちょうど列が外にあるときです。
+Make It Turn	回してみよう
+Make it correct first. Make it fast after. The stars measure how close you came to how the real engineers did it.\nThe Grid Hall is this way.	まず正しく動かし、そのあと速くする。星は、当時の技術者のやり方にどれだけ近づけたかの目安だ。\nグリッドホールはこちら。
+Many machines, one sentence.	たくさんの機械で、ひとこと。
+Masked lanes still hold values	マスクされたレーンにも値は残っている
+Matrix Multiply and Tensor Cores	行列積とテンソルコア
+Memory was dear: this cabinet packs a whole row into one number, 2 bits per pixel.\nPixel x of row y is bits 2x and 2x+1 of rom[y] — a number 0..3.\nThat number picks a colour from the palette at rom[16..20]. Unpack the screen.	メモリが高価だった時代、この筐体は 1 行をまるごと 1 つの数に詰め込みました。1 ピクセル 2 ビットです。\n行 y のピクセル x は rom[y] のビット 2x と 2x+1——0..3 の数です。\nその数が rom[16..20] のパレットから色を選びます。画面を展開してください。
+Min, shift and add answered four questions per box without a single IF.	最小値、シフト、加算だけで、IF をひとつも使わずに箱ごとに 4 つの問いに答えました。
+Modern GPUs interlock in hardware and hide latency by switching to another warp. Prism shows you the latency they hide.	現代の GPU はハードウェアでインターロックを行い、別の warp に切り替えてレイテンシを隠します。Prism は、その隠されたレイテンシを見せてくれます。
+Modern GPUs let lanes of a warp schedule somewhat independently; the lock-step model is still how they run fastest.	最近の GPU では warp 内のレーンがある程度独立してスケジュールされます。それでも、足並みをそろえて動くのがいちばん速い走り方です。
+Move LD r6, [273] up into the empty beat after LD r5. Everything else can stay.	LD r6, [273] を、LD r5 の後の空いた拍へ移します。ほかはそのままでかまいません。
+Move ST [lane], r0 from inside the ELSE to just after ENDIF.	ST [lane], r0 を ELSE の中から ENDIF の直後へ移します。
+Move to the origin, turn, push away, divide by depth, move back. One thread per vertex does it all in lock step.	原点へ移し、回し、奥へ押しやり、深度で割り、元へ戻す。1 頂点に 1 スレッドが、足並みをそろえてすべてをこなします。
+Must run	必達条件
+Mute	ミュート
+Myth: AND and OR need special parts. With 0/1 flags, multiply is AND and add is OR — the selector only asks 'is it zero?'.	誤解：AND と OR には専用の部品が要る。0/1 のフラグなら、乗算が AND、加算が OR です——セレクタが問うのは「0 かどうか」だけ。
+Myth: GPU threads are like CPU threads. Here they cannot even take a different step without the others waiting.	誤解：GPU のスレッドは CPU のスレッドと同じ。ここでは、1 つが違う一歩を踏むだけで他の全員が待たされます。
+Myth: NOPs make it correct, so they are fine. Each NOP is a whole warp doing nothing for a cycle.	誤解：NOP で正しくなるなら、それでいい。NOP 1 つは、warp 全体が 1 サイクル何もしないことです。
+Myth: a GPU is a CPU with more cores. Its threads are cheap and identical — one program, different indices.	誤解：GPU はコアの多い CPU。そのスレッドは安価で同一——ひとつのプログラムに、違うインデックス。
+Myth: a bigger counter fixes wrapping. It only moves the seam off screen for a while.	誤解：カウンタを大きくすれば回り込みは直る。継ぎ目がしばらく画面の外へ移るだけです。
+Myth: a blinking light needs a timer per bulb. One shared clock, tested by every bulb, is enough.	誤解：点滅する灯りには電球ごとにタイマーが要る。共有の時計が 1 つあれば、各電球がそれを判定するだけで十分です。
+Myth: a faster GPU fixes tearing. Tearing is about when you write, not how fast.	誤解：速い GPU ならティアリングは直る。ティアリングは「どれだけ速く」ではなく「いつ」書くかの問題です。
+Myth: a wrong index fails loudly. Inside the array it returns a valid, wrong value.	誤解：間違った添字は派手に失敗する。配列の内側なら、有効な、しかし間違った値が返ります。
+Myth: all threads of a launch see the same world. Per-warp values need per-warp addresses.	誤解：1 回の起動のスレッドはすべて同じ世界を見ている。warp ごとの値には、warp ごとのアドレスが必要です。
+Myth: an IF that skips most lanes saves time. The warp still spends the cycles — just with fewer lanes busy.	誤解：大半のレーンを飛ばす IF は時間の節約になる。warp は同じだけサイクルを使います——働くレーンが減るだけです。
+Myth: an if/else runs only the side that is true. For a warp that has lanes on both sides, both run.	誤解：if/else は真の側だけを実行する。両側にレーンがいる warp では、両方が実行されます。
+Myth: animation means storing every frame. Mostly it means recomputing from a few changing numbers.	誤解：アニメーションとは全フレームを保存すること。たいていは、いくつかの変わる数から計算し直すことです。
+Myth: branches are always bad on GPUs. Uniform branches are cheap — it is disagreement inside a warp that costs.	誤解：GPU では分岐は常に悪。全員そろった分岐は安価です——代償を生むのは warp 内の意見の食い違いです。
+Myth: branches are always the cheap way to choose. For a warp that is split anyway, a select is cheaper.	誤解：分岐は常に安上がりな選び方である。どのみち分かれている warp なら、セレクトのほうが安く済みます。
+Myth: caches make repeated loads free. They help, but the load instructions still issue and the bus still carries them.	誤解：キャッシュがあれば繰り返しの読み込みはタダになる。助けにはなりますが、読み込み命令は発行され、バスもそれを運びます。
+Myth: checking all the data takes a pass over all the data. Within a warp it takes one vote.	誤解：全データを調べるには全データを一巡する必要がある。warp の中なら、投票 1 回で済みます。
+Myth: clever bit tricks are unreadable hacks. Here they keep 32 lanes marching in step.	誤解：巧妙なビット演算は読めないハック。ここでは、それが 32 レーンの足並みをそろえています。
+Myth: computing both sides is always wasteful. When both are cheap, it beats making threads disagree.	誤解：両側を計算するのは常に無駄。どちらも安価なら、スレッドの意見を割るよりずっと得です。
+Myth: computing is always cheaper than remembering. A single load can replace a long formula.	誤解：計算は常に記憶より安い。1 回の読み込みが、長い数式の代わりになることもあります。
+Myth: dependent loads are free. The second waits for the first — GPUs hide that wait by running other warps.	誤解：依存する読み込みはタダ。2 回目は 1 回目を待ちます——GPU は別の warp を走らせて、その待ち時間を隠します。
+Myth: distance means a square root. To compare distances, squares are enough.	誤解：距離といえば平方根。距離の大小を比べるだけなら、二乗で十分です。
+Myth: divergent lanes run in parallel on different paths. They take turns, on the same hardware.	誤解：発散したレーンは別々の道を並列に走る。実際には、同じハードウェアで順番に実行しています。
+Myth: every if on a GPU is slow. A uniform if is as cheap as on any processor.	誤解：GPU の if はどれも遅い。一様な if は、どのプロセッサとも同じように安上がりです。
+Myth: every question needs its own pass. Related questions can ride the same one.	誤解：問いごとに別々の一巡が必要。関連する問いは、同じ一巡に相乗りできます。
+Myth: fewer instructions is always faster. On Prism a NOP-filled kernel can beat a shorter one that waits in the wrong places.	誤解：命令が少ないほど常に速い。Prism では、NOP だらけのカーネルが、間違った場所で待つ短いカーネルに勝つこともあります。
+Myth: flipping is 'size minus y'. With rows 0..15 it is 15 − y; 16 − y is one row off.	誤解：反転は「サイズ引く y」。行が 0..15 なら 15 − y です。16 − y では 1 行ずれます。
+Myth: inside an IF, only the active lanes exist. The others are still there, with their old registers.	誤解：IF の中には、動いているレーンしか存在しない。ほかのレーンもそこにいて、古いレジスタを持ったままです。
+Myth: out-of-bounds reads always crash. On GPUs they often just return wrong data.	誤解：範囲外の読み込みは必ずクラッシュする。GPU では、ただ間違ったデータが返ってくることがよくあります。
+Myth: palettes are obsolete. Swap four entries and every sprite changes colour — games still do it.	誤解：パレットは時代遅れ。4 項目を差し替えるだけで全スプライトの色が変わる——今でもゲームが使う手です。
+Myth: rotation is just the sin/cos formula. Without moving the pivot first it turns the model about the screen's corner.	誤解：回転とはあの sin/cos の公式のこと。先に支点を移さなければ、モデルは画面の隅を中心に回ってしまいます。
+Myth: scrolling moves pixels around in memory. The picture stays put; only the read address moves.	誤解：スクロールとはメモリ上でピクセルを動かすこと。絵はそのままで、動くのは読み出すアドレスだけです。
+Myth: some problems are just serial. Any associative operation can be split into a tree.	誤解：本質的に逐次的な問題もある。結合法則を満たす演算なら、どれでも木に分割できます。
+Myth: sort the faces back to front and the painter's algorithm works. Not when faces intersect or overlap in a cycle.	誤解：面を奥から手前へ並べ替えれば、画家のアルゴリズムは使える。面が交差したり、循環的に重なったりすると使えません。
+Myth: tests on typical data are enough. Edge lanes only show their bug when the ends carry big values.	誤解：典型的なデータでテストすれば十分。端のレーンのバグは、両端が大きな値を持つときにしか姿を現しません。
+Myth: the bounding box is a good enough approximation. It doubles the area of a typical triangle and fills a sliver's whole rectangle.	誤解：バウンディングボックスで十分な近似になる。普通の三角形なら面積は倍になり、細長い三角形では長方形全体を塗りつぶします。
+Myth: the fastest parallel algorithm does the least work. Hillis–Steele does more additions than a loop — and still wins.	誤解：最速の並列アルゴリズムは仕事量が最少。Hillis–Steele はループより多く足し算をします——それでも勝ちます。
+Myth: threads can only share data through memory. Within a warp they share registers.	誤解：スレッドはメモリ経由でしかデータを共有できない。warp の中なら、レジスタを共有できます。
+Myth: threads that finish early let the others run faster. They just wait.	誤解：早く終わったスレッドのおかげで、ほかのスレッドが速く走る。ただ待っているだけです。
+Myth: transparency is a colour. It is a rule — 'colour 0 means show what is underneath'.	誤解：透明は色の一種。実際はルールです——「色 0 は下にあるものを見せる」。
+Myth: wrong colours mean wrong lighting maths. Here the maths is right and only the timing is wrong.	誤解：色がおかしいのは光の計算が間違っているから。ここでは計算は正しく、間違っているのはタイミングだけです。
+NOP — waits one beat. Honest, but every NOP is a wasted cycle.	NOP — 1 拍だけ待ちます。素直ですが、NOP は 1 つごとに 1 サイクルの無駄です。
+NOW OPEN	新規公開
+NVIDIA GPUs group 32 threads into a warp; AMD uses 32 or 64 in a wavefront. All share one program counter.	NVIDIA GPU は 32 スレッドを 1 つの warp にまとめます。AMD は 32 または 64 スレッドの wavefront。いずれもプログラムカウンタを 1 つ共有します。
+Neighbouring lanes crawl over almost the same posts. How many times is rom[5] loaded in the starter?	隣り合うレーンは、ほとんど同じ見張りをなぞっています。最初のコードでは rom[5] は何回読み込まれる？
+Neighbours fetch together; strangers fetch alone.	隣同士なら一度で取れる。バラバラだと何度も往復する。
+Neither side	どちらの側も発行しない
+Never draw into what is being shown. Draw behind, then swap.	表示中のものに描いてはいけません。裏で描いてから、入れ替えるのです。
+Next	次へ
+Next level ›	次のステージ ›
+Next on the list:	次はこちら：
+No hints. Passing needs what used to earn ★2.	ヒントなし。以前の ★2 に相当する成績で合格です。
+None	0 回
+None of them	ひとつもない
+None — the sprite draws itself	ひとつも——スプライトが自分で描く
+Not built yet.	まだできていません。
+Not quite — and that is what the bench is for.	惜しい——それを確かめるのが作業台です。
+Not run yet	未実行
+Not run yet — press Run to test every case.	まだ実行していません——「実行」を押して全ケースをテストしましょう。
+Not that moment	その瞬間じゃない
+Nothing — each lane takes one side	代償なし——各レーンは片側だけを走る
+Notifications	通知
+OC-1 forbids jumps, so every branch reconverges structurally. Real code can be far messier.	OC-1 はジャンプを禁じているので、分岐は必ず構造的に再収束します。実際のコードはもっとずっと複雑になりえます。
+OC-1 gives each pixel exactly one thread on a 16×16 grid. Real launches pick grid and block shapes freely.	OC-1 は 16×16 のグリッドで、各ピクセルにちょうど 1 スレッドを割り当てます。実際の起動では、グリッドやブロックの形を自由に選べます。
+OC-1 hands you the ghost value; real hardware may return anything at all, which is worse.	OC-1 は幽霊の値を渡します。実機は何を返すか分からず、そのほうがもっと悪質です。
+OC-1 has no bounds faults at all; real hardware only traps accesses outside a whole allocation.	OC-1 には範囲外アクセスの障害がまったくありません。実機が捕まえるのは、割り当て全体の外へのアクセスだけです。
+OC-1 holds at most	OC-1 の命令数の上限：
+OC-1 loads finish at once. Real tables live in caches, and a miss costs hundreds of cycles.	OC-1 の読み込みは一瞬で終わります。実際の表はキャッシュに置かれ、ミスすれば数百サイクルかかります。
+OC-1 loads finish instantly. Real memory takes hundreds of cycles, which is why the scheduler matters.	OC-1 の読み込みは一瞬で終わります。実際のメモリは数百サイクルかかるため、スケジューラが重要になるのです。
+OC-1 skips a branch only when no lane takes it; real GPUs do the same, plus finer tricks we leave out.	OC-1 が分岐を飛ばすのは、どのレーンも入らないときだけです。実際の GPU も同じで、さらにここでは省いた細かな工夫もあります。
+OC-1's ROM returns 0 past its end; real memory past an array is just more memory.	OC-1 の ROM は末尾を越えると 0 を返します。実際のメモリでは、配列の外も単に別のメモリです。
+OLD	古い値
+ON A REAL GPU	実際の GPU では
+OPERATION	演算
+OR d, a, b — bitwise or.	OR d, a, b — ビットごとの OR。
+OR r2, r0, r1 → SHR r2, r2, 3 → after the LD: SETP.EQ p0, r2, 0 and SEL r3, p0, r3, 0 before PIX.	OR r2, r0, r1 → SHR r2, r2, 3 → LD の後：SETP.EQ p0, r2, 0 と SEL r3, p0, r3, 0 を PIX の前に。
+ORI has a hint	ORI からヒントがあります
+ORI · Every machine runs again. Go back and chase the stars you missed.	ORI · すべての機械がまた動き出しました。取りこぼした星を集めに戻りましょう。
+OUTPUT	出力
+OUTPUT · FRONT | BACK	出力 · 表 | 裏
+Occupancy and Scheduling	占有率とスケジューリング
+Off	オフ
+Old cabinets could not store a whole screen, so they stored a map.\nrom[0..16] is a 4×4 map of tile numbers; tile t's 4×4 pixels start at rom[16 + 16·t].\nDraw the level: each screen pixel looks up its tile, then its pixel inside the tile.	昔の筐体には画面全体を保存する余裕がなかったので、マップを保存しました。\nrom[0..16] はタイル番号の 4×4 マップ。タイル t の 4×4 ピクセルは rom[16 + 16·t] から始まります。\nステージを描いてください：画面の各ピクセルは、まず自分のタイルを、次にタイル内のピクセルを引きます。
+On	オン
+Once	1 回
+Once a lane has reached 1 it should stop counting — but a lane cannot leave the loop on its own.	レーンは 1 に到達したら数えるのをやめるべきです——でも、レーンが自分だけでループを抜けることはできません。
+Once — one rule must already know both	1 回——1 つのルールが最初から両方の辺を知っている
+One	1 回
+One AND turned a strip into a loop. Power-of-two sizes make wrapping almost free.	AND ひとつで、帯がループになりました。2 のべき乗のサイズなら、ラップアラウンドはほぼタダです。
+One Thread per Pixel	1 ピクセルに 1 スレッド
+One circuit, every pixel at once.	ひとつの回路で、全ピクセルを同時に。
+One instruction, thirty-two lanes. Parallel code is often shorter than serial code, not longer.	1 つの命令に、32 本のレーン。並列のコードは、逐次のコードより長くなるどころか短くなることも多いのです。
+One per lane	レーンごとに 1 回
+One warp-instruction. Period key	warp 命令を 1 つ進める。ピリオドキー
+One well in thirty-two is dry. After VOTE.ALL, how many lanes see "not everyone is fine"?	32 の井戸のうち 1 つが干上がっています。VOTE.ALL のあと、「全員が無事ではない」と見るレーンはいくつ？
+One write per thread	スレッドごとに書き込みは 1 回
+Only (2,2)	(2,2) だけ
+Only the 64 under the sprite	スプライトの下の 64 個だけ
+Only the diagonal, where row = column	対角線だけ、つまり行 = 列のマス
+Only the dry well's lane	干上がった井戸のレーンだけ
+Only the odd side	奇数側だけ
+Only the side the lanes agree on	レーンが一致した側だけ
+Only warps near row 8 pay	8 行目付近の warp だけが損をする
+Open the Hints tab when you want it.	必要になったら「ヒント」タブを開いてください。
+Opening Night	オープニングナイト
+Opens after {} more failed run(s), or in {} s ({} runs / {} s).	あと {} 回失敗するか、{} 秒後に公開（{} 回 / {} 秒）。
+Outside the disc	円の外側
+PARTS	部品
+PIPELINE	パイプライン
+PIX v — write this thread's own pixel.	PIX v — このスレッド自身のピクセルを書きます。
+PREDICATE	プレディケート
+PREDICT · BEFORE YOU BUILD	予想 · 組み立てる前に
+PROBE · LANE	プローブ · レーン
+PROBE · THREAD	プローブ · スレッド
+PROGRAM	プログラム
+PUZZLE	パズル
+Packing and palettes	パッキングとパレット
+Packing only works while the sums fit their half-word; real code checks that before relying on it.	パックが成り立つのは、合計が自分の半ワードに収まる間だけです。実際のコードでは、頼る前にそれを確かめます。
+Packing two small values into one word to halve the shuffle traffic is an everyday trick in GPU reductions.	2 つの小さな値を 1 ワードにパックして、シャッフルの回数を半分にするのは、GPU のリダクションでよく使う手です。
+Palettes, gamma curves and sine tables are all lookup tables; a GPU's texture units are built around fetching table entries fast.	パレット、ガンマカーブ、サイン表はどれもルックアップテーブルです。GPU のテクスチャユニットは、表の項目を素早く取り出すことを軸に作られています。
+Parallel Patterns	並列パターン
+Parallel scan	並列スキャン
+Part old picture, part new — a tear	古い絵と新しい絵が混ざる——ティアリング
+Particle and physics kernels sort or bin their data by behaviour so whole warps agree, or rewrite branches as selects.	粒子や物理のカーネルは、データを振る舞いごとに並べ替えたりまとめたりして warp 全体の意見をそろえるか、分岐を選択命令に書き換えます。
+Particles are scattered at random, so almost every warp has some in each half. What does the IF cost?	粒子はランダムに散らばっているので、ほぼすべての warp が上下両方の半分に粒子を持っています。この IF の代償は？
+Partner = lane XOR 16, then XOR 8, 4, 2, 1. After each step every lane holds the sum of a bigger group.	相手 = lane XOR 16、続いて XOR 8、4、2、1。各ステップの後、どのレーンもより大きなグループの和を持っています。
+Parts allowed:	使える部品数：
+Pause	一時停止
+Perspective scales x toward 0, the screen's corner, not the axis	透視投影は x を軸ではなく、画面の隅である 0 に向けて縮める
+Physics engines test thousands of boxes per frame on the GPU with exactly this kind of branch-free math.	物理エンジンは毎フレーム、何千もの箱を GPU 上で判定します。使うのはまさにこの分岐なしの数学です。
+Pick an instruction above to append it. Click a line to select it, a chip to change it.\nDigits type a number · Alt+↑/↓ moves a line\nDelete removes it.	上の命令を選ぶと末尾に追加されます。行をクリックで選択、チップをクリックで変更。\n数字キーで数値入力 · Alt+↑/↓ で行を移動\nDelete で削除。
+Pineda's 1988 paper described edge functions for parallel rasterisation; every GPU raster unit still evaluates them, in hardware, for tiles of pixels.	Pineda は 1988 年の論文で、並列ラスタライズのためのエッジ関数を示しました。今もすべての GPU のラスタユニットが、ピクセルのタイルごとにハードウェアでそれを計算しています。
+Pipeline	パイプライン
+Pipelines and Scheduling	パイプラインと命令スケジューリング
+Play	再生
+Playback speed, steps per second	再生速度（1 秒あたりのステップ数）
+Point at the replay's latest step (the right edge of the Warp River). Click the river or use ← → to move.	リプレイの最新ステップ（Warp River の右端）を指し示す。川をクリックするか ← → で移動。
+Postal courier	郵便配達
+Precision and Quantization	精度と量子化
+Precision traded for bandwidth.	精度と引き換えに帯域を得る。
+Predication	プレディケーション
+Prism draws in triangles. A triangle is three edges, and each edge is a line a·x + b·y + c stored in rom: edge 0 at rom[0..3], edge 1 at rom[3..6], edge 2 at rom[6..9].\nEDGE r, [a] evaluates the line at rom[a] for this thread's pixel: positive on one side, negative on the other.\nPaint rom[9] on every pixel strictly inside the triangle and 0 elsewhere. Some triangles wind the other way; one is flat as a line.	Prism は三角形で絵を描きます。三角形は 3 本の辺で、各辺は rom に格納された直線 a·x + b·y + c です：辺 0 は rom[0..3]、辺 1 は rom[3..6]、辺 2 は rom[6..9]。\nEDGE r, [a] は、このスレッドのピクセルで rom[a] の直線を計算します：片側では正、反対側では負になります。\n三角形の厳密に内側にあるピクセルを rom[9] で塗り、それ以外は 0 にしてください。頂点が逆回りの三角形もあり、1 つは線のように平らです。
+Prism · Gen 2	Prism · 第2世代
+Production scans use the work-efficient Blelloch form across blocks; one warp keeps this one simple.	実用のスキャンでは、ブロックをまたいで仕事量の少ない Blelloch 方式を使います。ここでは 1 つの warp で簡単にしています。
+Program memory is full	プログラムメモリがいっぱいです
+Put the starter back. Undo brings yours back.	最初の状態に戻します。元に戻すで復元できます。
+Puzzle	パズル
+Quit	終了
+RESTORED	修復済み
+Raster Line	走査線
+Read after write	リードアフターライト
+Reads r{r} on beat {b}, but the result from beat {f} lands on beat {w}. Nothing waits: it gets the old value.	{b} 拍目に r{r} を読みますが、{f} 拍目の結果が届くのは {w} 拍目です。誰も待たないので、古い値を読みます。
+Real GPUs can blend several draws into the same pixel in order; OC-1's sign keeps one write per bulb per frame.	実際の GPU は複数の描画を順番に同じピクセルへ合成できます。OC-1 の看板は、1 フレームに電球 1 つあたり 1 回しか書きません。
+Real GPUs coalesce neighbouring loads into one transaction, which softens — not removes — the cost.	実際の GPU は、隣り合う読み込みを 1 つのトランザクションにまとめます。コストは和らぎますが、なくなりはしません。
+Real GPUs may retire a warp whose lanes are all done; one live lane keeps it running.	実際の GPU は、レーンがすべて終わった warp を引き揚げることがあります。1 つでも生きているレーンがあれば、走り続けます。
+Real chips run warps on many multiprocessors at once; OC-1 has one that works through them in turn.	実際のチップは、多数のマルチプロセッサで同時に warp を走らせます。OC-1 には 1 つしかなく、順番にこなしていきます。
+Real collision runs on objects, not pixels; per-pixel tests are for debug overlays like this one.	実際の衝突判定はピクセルではなく物体に対して行います。ピクセルごとの判定は、このようなデバッグ表示用です。
+Real compositing blends with partial alpha; OC-1 has only fully on or fully see-through.	実際の合成では半透明で混ぜ合わせます。OC-1 には完全な不透明と完全な透明しかありません。
+Real displays refresh at 60–240 Hz and shaders use floating-point time; OC-1 counts whole frames.	実際のディスプレイは 60～240 Hz で更新され、シェーダーは浮動小数点の時刻を使います。OC-1 は整数のフレームを数えるだけです。
+Real formats decompress in fixed-function hardware, not in your kernel.	実際のフォーマットはカーネルではなく、固定機能ハードウェアで展開されます。
+Real hardware must detect uniformity at run time, which OC-1 does for free by looking at the mask.	実機は一様かどうかを実行時に検出しなければなりません。OC-1 はマスクを見るだけなので、それが無料でできます。
+Real hardware reconverges lanes with a stack or per-thread program counters; OC-1 always rejoins at ENDIF.	実機はスタックやスレッドごとのプログラムカウンタでレーンを再収束させます。OC-1 は常に ENDIF で合流します。
+Real pipelines flip in the viewport transform with fractional pixel centres; OC-1's bulbs are whole cells.	実際のパイプラインはビューポート変換で反転し、ピクセルの中心は小数の座標を持ちます。OC-1 の電球は整数のマスです。
+Real pipelines use 4×4 matrices and floating point, and divide after clipping. Prism keeps one axis and a lookup table.	実際のパイプラインは 4×4 行列と浮動小数点を使い、クリッピングの後で除算します。Prism が持つのは軸 1 本と参照表 1 つだけです。
+Real rasterisers use a tie-break "top-left" rule so shared edges are drawn exactly once. Prism simply leaves pixels on an edge empty.	実際のラスタライザは「左上」ルールで境界上のピクセルを処理し、共有する辺がちょうど 1 回だけ描かれるようにします。Prism は辺上のピクセルを単に空けておきます。
+Real reductions span many warps and blocks, combining warp results through shared memory and atomics.	実際のリダクションは多数の warp とブロックにまたがり、共有メモリとアトミック操作で各 warp の結果をまとめます。
+Real shaders interpolate normals across a face. Prism's facets are flat, one normal each.	実際のシェーダーは面全体で法線を補間します。Prism の面は平らで、法線は 1 面に 1 本です。
+Real shaders use fractions and fade the rim for smooth edges; OC-1's rim is a hard integer line.	実際のシェーダーは小数を使い、縁をぼかして滑らかな端を作ります。OC-1 の縁は、くっきりした整数の線です。
+Real shuffles work only within a warp too; sharing across warps goes through on-chip shared memory, which OC-1 omits.	実際のシャッフルも warp 内でしか使えません。warp をまたぐ共有はオンチップの共有メモリを通しますが、OC-1 では省いています。
+Real sprites are textured quads with blending; here the sprite is a rectangle test per pixel.	実際のスプライトはブレンド付きのテクスチャ四角形です。ここではピクセルごとの矩形判定にすぎません。
+Real swaps flip a pointer in the display controller; OC-1 alternates buffers by frame parity.	実際の入れ替えはディスプレイコントローラのポインタを切り替えるだけです。OC-1 はフレームの偶奇でバッファを交互に使います。
+Real wrapping often uses mod on non-power-of-two sizes, which is a slower operation.	実際のラップアラウンドでは、2 のべき乗でないサイズに剰余を使うことが多く、それはもっと遅い演算です。
+Reduce motion	動きを減らす
+Registers are the fastest memory there is, and a warp can pass them sideways.	レジスタは最も速いメモリです。そして warp は、それを横に渡せるのです。
+Remove	削除
+Repeat the five-line step with distances 2, 4, 8 and 16. The SETP guard stops lanes near 0 from wrapping around.	この 5 行のステップを距離 2、4、8、16 でくり返します。SETP のガードが、0 付近のレーンが反対側へ回り込むのを防ぎます。
+Replace A<B with ADD (Y, h) → A≥B (B = 16) → MUX ?, 1 → 12, 0 → 1.	A<B を ADD（Y, h）→ A≥B（B = 16）→ MUX の ?（1 → 12、0 → 1）に置き換えます。
+Replace AND r2, r2, 31 and LD r1, [r2] with SHFL r1, r0, r2.	AND r2, r2, 31 と LD r1, [r2] を SHFL r1, r0, r2 に置き換えます。
+Replace the first line with ADD r0, frame, 1 then AND r0, r0, 1. The rest stays.	1 行目を ADD r0, frame, 1 に置き換え、続けて AND r0, r0, 1 を入れます。残りはそのまま。
+Replace the first three lines with AND r0, y, 12 / SHR r1, x, 2 / ADD r0, r0, r1.	最初の 3 行を AND r0, y, 12 / SHR r1, x, 2 / ADD r0, r0, r1 に置き換えます。
+Replay	リプレイ
+Replaying case	ケースを再生中
+Requires	必要条件
+Reset	リセット
+Reset to the starter, run it, and point on the Warp River at	初期回路に戻して実行し、Warp River 上で指し示す：
+Restore the starter	最初の状態に戻す
+Results arrive late; do not read them early.	結果は遅れて届く。早く読んではいけない。
+Results ›	結果 ›
+Rewind	巻き戻し
+Rewind the replay to this beat.	リプレイをこの拍まで巻き戻します。
+Right.	正解です。
+Row 1	1 行目
+Row 21 — off the screen	21 行目——画面の外
+Row 5	5 行目
+Row-major or column-major	行優先か列優先か
+Rows 0, 1, 2	0、1、2 行目
+Rows 13, 14, 15	13、14、15 行目
+Rows 14, 15, 16	14、15、16 行目
+Rows are numbered from the top, 0 to 15. With 3 rows of water, which rows should be blue?	行番号は上から数えて 0 から 15 まで。水深が 3 行のとき、青くなるべきなのはどの行？
+Rows the warps reached first are new, the rest are old. Drawing where nobody is looking avoids the race.	warp が先に到達した行は新しく、残りは古いまま。誰も見ていない場所に描けば、この競争は避けられます。
+Run	実行
+Run it and open the Pipeline tab: red cells are reads that came too early. NOPs would fix them, but each NOP is a cycle.	実行して「パイプライン」タブを開きましょう：赤いセルは早すぎた読み出しです。NOP でも直せますが、NOP 1 つは 1 サイクルです。
+Run the program to watch the warps flow. A warp is 32 lanes that issue one instruction together; when lanes disagree on a branch, the warp runs both sides while some lanes wait.	プログラムを実行して、warp の流れを見てみましょう。warp とは 1 つの命令をそろって発行する 32 本のレーンです。分岐でレーンの意見が割れると、warp は両側を実行し、その間一部のレーンは待たされます。
+Run the program, then step through it. Each row is one instruction of one warp; each column is one of that warp's beats. A result lands three beats after it issues, and nothing stops a read that comes sooner: it gets the old value.	プログラムを実行し、1 ステップずつ見ていきましょう。各行は 1 つの warp の 1 命令、各列はその warp の 1 拍です。結果は発行から 3 拍後に届きますが、それより早い読み出しを止めるものは何もありません：古い値を読んでしまいます。
+Run the same code on garbage	ゴミデータで同じコードを動かす
+Run the starter as is. What happens to pixel (0,5), left of the sprite?	最初のコードをそのまま実行します。スプライトの左にあるピクセル (0,5) はどうなるでしょう？
+SEL d, p, a, b — d = p ? a : b. No branch, no divergence.	SEL d, p, a, b — d = p ? a : b。分岐なし、発散なし。
+SETP sets a predicate per lane; IF p0 masks off the lanes where it is false. Stores from masked lanes never happen.	SETP はレーンごとにプレディケートを設定し、IF p0 はそれが偽のレーンをマスクします。マスクされたレーンの書き込みは決して起こりません。
+SETP.GE p0, r0, r1 gives each lane its own answer; VOTE.ALL p1, p0 is true only if p0 holds in every lane.	SETP.GE p0, r0, r1 は各レーンに自分の答えを出させます。VOTE.ALL p1, p0 は、すべてのレーンで p0 が成り立つときだけ真になります。
+SETP.cmp p, a, b — set predicate p to the comparison, per lane.	SETP.cmp p, a, b — レーンごとに比較結果をプレディケート p に設定します。
+SHFL d, a, lane — read register a from another lane of the warp.	SHFL d, a, lane — 同じ warp の別のレーンからレジスタ a を読みます。
+SHFL d, a, src reads register a from lane src of the same warp, wrapping around 32.	SHFL d, a, src は同じ warp のレーン src からレジスタ a を読みます。番号は 32 で一周します。
+SHFL never fails: an out-of-range request wraps. So the end lanes must refuse the borrowed value, with a predicate and SEL.	SHFL は失敗しません：範囲外の要求は回り込みます。だから端のレーンは、プレディケートと SEL を使って、借りた値を拒否しなければなりません。
+SHFL r1, r0, r2 and SHFL r3, r4, r2, then MUL r1, r1, r3 (flags are 0 or 1) / ADD r0, r0, r1; only the ST goes inside IF p0.	SHFL r1, r0, r2 と SHFL r3, r4, r2、続けて MUL r1, r1, r3（フラグは 0 か 1）/ ADD r0, r0, r1；IF p0 の中に入れるのは ST だけです。
+SHFL r1, r0, r2 gives each lane the r0 of lane r2. What does it cost in memory loads?	SHFL r1, r0, r2 は各レーンにレーン r2 の r0 を渡します。メモリ読み込みは何回かかるでしょう？
+SHFL takes the lane number modulo 32, so −1 becomes 31. The end of the line borrows from the other end.	SHFL はレーン番号を 32 で割った余りで扱うので、−1 は 31 になります。列の一方の端が、もう一方の端から借りてくるのです。
+SHL d, a, b — shift left: a × 2^b.	SHL d, a, b — 左シフト：a × 2^b。
+SHL r2, r0, 1\nSETP.GE p0, r2, r1\nVOTE.ALL p1, p0\nSEL r4, p1, 1, 0\n	; water in the low half-word, load in the high one: one sum does both | 水は下位半ワード、荷は上位半ワード：1 回の合計で両方を済ませる\n
+SHL r2, r2, 3\nADD r1, r1, r2\nADD r1, r1, 80\nLD r1, [r1]\n	; transparent outside the box, and wherever the sprite is 0 | 箱の外は透明、スプライトが 0 の所も透明\n
+SHL r9, y, 2 / EDGE r0, [r9] / SHR r0, r0, 4 / LD r1, [r0] / LD r5, [r1]. Load the band from [r9 + 3] and add y + frame while waiting.	SHL r9, y, 2 / EDGE r0, [r9] / SHR r0, r0, 4 / LD r1, [r0] / LD r5, [r1]。待っている間に [r9 + 3] から縞を読み込み、y + frame を足しておきます。
+SHOWCASE · LIVE	ショーケース · ライブ
+SHR d, a, b — shift right: a ÷ 2^b, rounding down.	SHR d, a, b — 右シフト：a ÷ 2^b（切り捨て）。
+SIMT	SIMT
+ST [addr], v — write the output buffer.	ST [addr], v — 出力バッファに書きます。
+STARS	星
+STORES	書き込み
+SUB r2, r2, 1\n	MIN r0, r0, r2      ; >= 0 only inside | 箱の内側でだけ >= 0\n
+SUB r4, 0, frame / SEL r4, p0, frame, r4 / ADD r1, r1, r4 / SEL r3, p0, 12, 6. For three stars: row·16 is just r0 AND 240, and the row test is r0 < 128.	SUB r4, 0, frame / SEL r4, p0, frame, r4 / ADD r1, r1, r4 / SEL r3, p0, 12, 6。星 3 つを狙うなら：行·16 はただの r0 AND 240、行の判定は r0 < 128 です。
+Scans power GPU sorting, stream compaction and allocation; libraries like CUB tune them per chip.	スキャンは GPU 上のソート、ストリームコンパクション、メモリ割り当てを支えています。CUB などのライブラリはチップごとに調整しています。
+Schoolteacher	小学校の先生
+Screen space and off-by-one	画面座標と「1 つずれ」
+Screen y grows downward, and the last row is 15, not 16. Blue means y ≥ 16 − 3 = 13.	画面の y は下向きに増え、最後の行は 16 ではなく 15 です。青になるのは y ≥ 16 − 3 = 13。
+Scrolling backgrounds, ring buffers and texture repeat modes all rely on the same masked subtraction. A seam that tears is a classic scrolling bug.	スクロールする背景、リングバッファ、テクスチャのリピートモードは、どれも同じマスク付きの引き算に頼っています。継ぎ目が裂けるのは、スクロールの定番のバグです。
+Settings	設定
+Shader compilers turn short ifs into select instructions so neighbouring threads never take different paths.	シェーダーコンパイラは短い if を選択命令に変え、隣り合うスレッドが別の道を進まないようにします。
+Shaders and collision code compare length² with radius² in their hottest loops; square roots are the instruction they avoid.	シェーダーや衝突判定のコードは、いちばん熱いループで長さの二乗と半径の二乗を比べます。避けたい命令は平方根です。
+Shift, mask, look up: the three moves that turned tiny memories into colourful screens.	シフト、マスク、参照：小さなメモリを色鮮やかな画面に変えた 3 つの技。
+Shifting right by 2 divides by 4. Only 0..3 become 0; negatives stay negative, 4 and up stay positive.	2 ビット右シフトは 4 で割ること。0 になるのは 0..3 だけで、負の数は負のまま、4 以上は正のままです。
+Show the walkthrough	解答を表示
+Show this hint	このヒントを表示
+Showcase ▶	ショーケース ▶
+Shuffle both the reading and the neighbour's flag, outside the IF where everybody is awake. Then keep the neighbour's reading only if its flag is 1.	IF の外、誰もが起きている場所で、読み値と隣のフラグの両方をシャッフルします。そのうえで、隣のフラグが 1 のときだけ、隣の読み値を残します。
+Shuffles, reductions and votes combine: a warp can answer several questions about its own 32 numbers without touching memory twice.	シャッフル、リダクション、投票は組み合わせられます：warp は、メモリを二度さわらなくても、自分の 32 個の数についていくつもの問いに答えられます。
+Signage, HUDs and UI shaders compose dozens of layers in one pixel shader; the order of the selects is the draw order.	看板、HUD、UI のシェーダーは、1 つのピクセルシェーダーの中で何十ものレイヤーを合成します。選択の順番が、そのまま描画の順番です。
+Sit masked off, waiting	マスクされて待機する
+Skip	スキップ
+Skip ahead to ENDIF	ENDIF まで飛ばす
+Solved with the walkthrough: at most ★★ here.	解答を見て解いた：ここでは最大 ★★。
+Solved.	クリア。
+Someone is always awake, so the machine never stalls.	誰かが必ず起きていれば、機械は止まらない。
+Space	スペース
+Split and Rejoin	分岐と合流
+Split it: a pixel is in the block when its column test AND its row test both pass.	分けて考えましょう：列の判定と行の判定の両方を通ったとき、ピクセルはブロックの中にあります。
+Sprites, tiles and the race against the beam.	スプライト、タイル、そしてビームとの競争。
+Stars	星
+Start by giving every lane its own reading. Then each lane adds a partner's value — which partner?	まず各レーンに自分の読み値を持たせます。次に各レーンが相手の値を足します——どの相手？
+Station master	駅長
+Stencils and sliding-window filters on GPUs are written this way: a load per element, shuffles for the neighbours.	GPU のステンシル計算やスライディングウィンドウのフィルタは、こう書きます：要素ごとに 1 回読み込み、隣の値はシャッフルで受け取ります。
+Step	ステップ
+Step 1 gives lanes 6..7; step 2 adds lane 5's pair, 4..5. Each step doubles the window: 1, 2, 4, 8 …	ステップ 1 で 6..7 が得られ、ステップ 2 でレーン 5 のペア 4..5 が加わります。ステップごとに窓は倍になります：1、2、4、8…
+Step through the Pipeline tab: one read of r6 is marked red, two beats after LD r6 issued.	「パイプライン」タブを 1 ステップずつ見ましょう：LD r6 の発行から 2 拍後に、r6 の読み出しが 1 つ赤く表示されています。
+Story	ストーリー
+Strip pixel (1,2) — correct	帯のピクセル (1,2)——正しい
+Strip pixel (1,3) — the next row	帯のピクセル (1,3)——次の行
+Subtract 8 from x right after loading it, and add 8 back just before the store.	x を読み込んだらすぐ 8 を引き、書き込む直前に 8 を足し戻します。
+Sums, maxima and dot products on GPUs — including inside neural networks — are built from exactly this butterfly.	GPU 上の総和、最大値、内積は——ニューラルネットワークの内部も含めて——まさにこのバタフライで組み立てられています。
+Swapping row and column leaves a cell alone only when they are equal. Everything off the diagonal lands on its mirror image.	行と列を入れ替えて動かないのは、行と列が等しいマスだけです。対角線から外れたマスは、すべて鏡像の位置に着地します。
+TARGET	目標
+THE DEEP WELL	深井戸
+THE PROGRAM AS OC-1 ASSEMBLY	OC-1 アセンブリで見たプログラム
+THIS BEAT	この拍
+THIS CASE	このケース
+THIS RUN	今回の実行
+TURN THE TOWER	風塔を回す
+Tables beat formulas	表は公式に勝つ
+Talking Between Chips	チップ間通信
+Talking costs more than thinking.	通信は計算より高くつく。
+Texture Sampling and Image Processing	テクスチャサンプリングと画像処理
+Texture compression (BC, ASTC) still packs pixels into a few bits plus a small colour table per block.	テクスチャ圧縮（BC、ASTC）は今でも、ピクセルを数ビットに詰め、ブロックごとに小さなカラー表を添えています。
+Texture samplers offer a 'repeat' mode in hardware; consoles scrolled backgrounds by changing one register.	テクスチャサンプラーはハードウェアで「リピート」モードを備えています。昔のゲーム機はレジスタを 1 つ変えるだけで背景をスクロールしました。
+That would loop	それではループになります
+The ADD and the SUB	ADD と SUB
+The Camel Count	ラクダの数え上げ
+The Collatz job takes one step for each of 32 numbers in rom[0..32].\nOdd numbers become 3n + 1, even numbers become n / 2. Results go to out[lane].\nHalf the board stays dark. The arithmetic is right — something else is not.	コラッツの課題は、rom[0..32] の 32 個の数それぞれに 1 ステップずつ進める。\n奇数は 3n + 1、偶数は n / 2 になる。結果は out[lane] に書く。\nボードの半分が暗いままだ。算術は合っている——間違っているのは別のところ。
+The Collision	衝突
+The Crawl	這い進み
+The Disc	円盤
+The Edge Lane	端のレーン
+The Else	それ以外
+The Flicker	ちらつき
+The Fork	分かれ道
+The Frame	額縁
+The Ghost Lane	幽霊レーン
+The Grid Hall clock ticks once per frame and never stops.\nDraw a line in colour 10 on row CLOCK mod 16, so it sweeps down and wraps.\nSeveral frames are checked — a fixed row will not do.	グリッドホールの時計は 1 フレームごとに 1 刻み進み、止まらない。\n第 CLOCK mod 16 行に色 10 の線を引き、上から下へ掃引して折り返すこと。\n複数のフレームがチェックされる——固定の行では通らない。
+The Grid Hall sign has 256 bulbs and only one circuit.\nEvery bulb runs the same wiring, fed its own X, Y and ADDR.\nLight only bulb (5,3), in colour 7.	グリッドホールの看板には電球が 256 個あるが、回路は 1 つだけ。\nどの電球も同じ配線を走らせ、それぞれの X、Y、ADDR を受け取る。\n電球 (5,3) だけを、色 7 で点灯させよう。
+The Grid Hall under the Deep Well waits for its machines.	深井の下のグリッドホールが、マシンの復元を待っている。
+The Grid Hall wants a round window: a disc of colour 11 on a field of colour 1, centred on bulb (8,8).\nIts radius is 2 + (CLOCK AND 3), so it breathes with the frames. A bulb belongs to the disc when its distance to the centre is at most the radius.\nThe blueprint has no square root. You will not need one.	グリッドホールが丸い窓を欲しがっています：色 1 の地に、色 11 の円盤を、電球 (8,8) を中心に置きます。\n半径は 2 + (CLOCK AND 3) で、フレームに合わせて膨らんだり縮んだりします。中心までの距離が半径以下の電球は、円盤に含まれます。\n設計図に平方根はありません。必要にもなりません。
+The Lookup Table	ルックアップテーブル
+The Mask	マスク
+The Memory Wall and Caches	メモリの壁とキャッシュ
+The NES drew every background from 8×8 tiles; modern GPUs still page huge textures through tile tables.	NES は背景をすべて 8×8 のタイルで描きました。現代の GPU も、巨大なテクスチャをタイル表でページ管理しています。
+The Origin Machine	起源機
+The Origin Machine · Gen 6	起源機 · 第6世代
+The Palette	パレット
+The Prefix	プレフィックス和
+The Reduction	リダクション
+The ST runs only while the ELSE mask is active. Results must be stored after both sides have finished.	ST は ELSE のマスクが有効な間しか実行されません。結果は両側が終わってから書き込む必要があります。
+The Scroll	スクロール
+The Seam	継ぎ目
+The Shuffle	シャッフル
+The Skewed Level	傾いたレベル
+The Sprite	スプライト
+The Tile Map	タイルマップ
+The Triangle	三角形
+The Turning Wind Tower	回る風塔
+The Uniform Branch	一様な分岐
+The Vote	投票
+The Warp Map	Warp マップ
+The Water Board	水位ボード
+The Weather Machine	天気マシン
+The active mask	アクティブマスク
+The arcade's mascot lives in ROM: 8×8 colours, row by row, at rom[0..64].\nDraw it with its top-left corner at (4,4). Everything else stays black.\nEvery pixel is a thread: each one must find its own sprite pixel — or none.	アーケードのマスコットは ROM の中にいます：8×8 の色が行ごとに rom[0..64] に並んでいます。\n左上の角を (4,4) に合わせて描き、それ以外は黒のままにしてください。\nどのピクセルもスレッドです：それぞれが自分のスプライトのピクセルを見つけるか、何もないと判断しなければなりません。
+The back buffer is the other one: ((CLOCK + 1) AND 1). Its base is that times 256.	裏バッファはもう一方、((CLOCK + 1) AND 1) です。その先頭アドレスはこの値の 256 倍です。
+The beam reads a buffer top to bottom while warps are still writing it. What does the player see?	warp がまだ書き込んでいる最中に、ビームはバッファを上から下へ読みます。プレイヤーには何が見える？
+The board is full	ボードがいっぱいです
+The cabinet reopens tonight. The level from the Tile Map is at rom[0..80].\nThe hero — an 8×8 sprite at rom[80..144] — stands at (rom[144], rom[145]). Colour 0 is see-through.\nComposite them: sprite on top where it is opaque, the level everywhere else. It may hang off the edge.	今夜、筐体が再オープンします。「タイルマップ」のステージは rom[0..80] にあります。\n主人公——rom[80..144] の 8×8 スプライト——は (rom[144], rom[145]) に立っています。色 0 は透明です。\n合成してください：不透明な部分ではスプライトを上に、それ以外はステージを。画面の端からはみ出すこともあります。
+The caravan master wants three numbers from the roll in rom: water per camel in rom[0..32], load per camel in rom[32..64].\nout[0] = total water, out[1] = total load, out[2] = 1 if every camel carries at most twice its water in load, otherwise 0.\nThe other cells are not checked. The caravan leaves in 60 cycles; two sums and a check each want a whole warp.	キャラバンの長は、名簿から 3 つの数を知りたがっています：ラクダ 1 頭ごとの水を rom[0..32]、荷を rom[32..64] に。\nout[0] = 水の合計、out[1] = 荷の合計、out[2] = どのラクダの荷も水の 2 倍以下なら 1、そうでなければ 0。\nほかの欄は検査されません。キャラバンは 60 サイクル後に出発します。2 つの合計と 1 つの検査は、それぞれ warp まるごと 1 回分を要します。
+The cartridge holds a 4×4 table of colours in rom[0..16], row by row, with no pattern to them.\nTile the screen with it: pixel (x,y) takes the colour at rom[(y AND 3)·4 + (x AND 3)].\nNo formula can make these colours. Stop calculating and look them up.	カートリッジの rom[0..16] には、4×4 の色の表が行ごとに入っていて、規則性はありません。\nこれで画面を敷き詰めてください：ピクセル (x,y) は rom[(y AND 3)·4 + (x AND 3)] の色を取ります。\nこの色を作れる公式はありません。計算はやめて、引きましょう。
+The chain is EDGE → SHR → LD v → LD light → ADD → LD colour. The row's band and y + frame don't depend on it: start them early.	連鎖は EDGE → SHR → LD v → LD 明るさ → ADD → LD 色。その行の縞と y + frame はこれに依存しないので、早めに始めましょう。
+The chain: three beats per link, however much else there is	連鎖：ほかに命令がいくつあっても、1 段につき 3 拍
+The circuit feeds back into itself.	回路が自分自身に戻っています。
+The circuit has no output.	回路に出力がありません。
+The circuit was right about the water and wrong about which way is up. Screens count rows downward from 0.	回路は水の計算は合っていたのに、どちらが上かを取り違えていました。画面の行は 0 から下へ向かって数えます。
+The colour of this bulb.	この電球の色。
+The colours come from memory, not from arithmetic. The arithmetic you need is only for finding the right entry.	色はメモリから来るのであって、算術から来るのではありません。算術が要るのは、正しい項目を見つけるときだけです。
+The column must stay in 0..15. AND with 15 wraps any number into that range.	列は 0..15 に収まる必要があります。15 と AND を取れば、どんな数もその範囲に折り返せます。
+The depth buffer	深度バッファ
+The divide table is off by one	除算表が 1 つずれている
+The formula is fine. Facets that face you depend most on the light's z part. Which register holds it, and when does it land?	公式に問題はありません。手前を向いた面は、光の z 成分にいちばん左右されます。それはどのレジスタにあり、いつ届く？
+The frame counter. Same for every bulb.	フレームカウンタ。すべての電球で同じです。
+The intended experience.	想定どおりの体験。
+The keeper's log has four banks of 32 readings: rom[0..32], rom[32..64], rom[64..96], rom[96..128]. out[lane] is the sum of the four readings for that lane.\nOn Prism a result lands three beats after its instruction issues, and nothing waits for it: read a register sooner and you get its old value.\nThe program below was right on Lumen. Make it right on Prism in ≤ 20 cycles.	見張り番の記録には 32 個ずつ 4 組の読み値があります：rom[0..32]、rom[32..64]、rom[64..96]、rom[96..128]。out[lane] は、そのレーンの 4 つの読み値の合計です。\nPrism では、結果は命令の発行から 3 拍後に届き、誰もそれを待ちません：早く読めば、レジスタの古い値が得られます。\n下のプログラムは Lumen では正しく動きました。Prism でも ≤ 20 サイクルで正しく動くようにしてください。
+The kernel is a chain of four loads, each needing the last one's result. What sets its length on Prism?	このカーネルは 4 回の読み込みの連鎖で、どれも直前の結果を必要とします。Prism では、何がその長さを決める？
+The latency chain	レイテンシの連鎖
+The ledger sorts 32 readings from rom[0..32] into three tiers: below 300 gain 100; from 300 up to 699 are doubled; 700 and above lose 100. Results go to out[lane].\nThe old clerk only knows the first tier. Teach it the other two — the lanes that miss one tier must wait while the others take theirs.	帳簿は rom[0..32] の 32 個の読み値を 3 段階に分けます：300 未満は 100 を足す、300 以上 699 以下は 2 倍にする、700 以上は 100 を引く。結果は out[lane] へ。\n古い事務員は最初の段階しか知りません。残りの 2 つを教えてあげてください——どれか 1 つの段階に当たらなかったレーンは、ほかのレーンが自分の段階を済ませる間、待たなければなりません。
+The lighting kernel shades each facet by how much it faces the light: brightness = (normal · light) >> 9, from 0 to 7, then a colour from the ramp at rom[280..288].\nIt was scheduled for Prism by hand. Since the last edit, the facets facing the visitors have gone black.\nFind the beat where an instruction read a register before its result had landed. Point at it in the Warp River, then fix it.	照明カーネルは、各面が光のほうをどれだけ向いているかで色を塗ります：明るさ = (法線 · 光) >> 9 で 0 から 7、それから rom[280..288] のカラーランプから色を取ります。\nこれは Prism 向けに手作業でスケジュールされたものです。前回の編集から、来館者のほうを向いた面が真っ黒になりました。\n結果が届く前にレジスタを読んだ命令の拍を見つけてください。Warp River でそれを指し示してから、直しましょう。
+The load lands on its third beat. One beat early, r6 still holds its old value, 0, so the light's z part drops out.	読み込みが届くのは 3 拍目です。1 拍早いと r6 はまだ古い値の 0 なので、光の z 成分がまるごと消えます。
+The loaded value	読み込んだ値
+The loop belongs to the warp, not to a lane. A lane that has finished can only be masked off while the slowest lane keeps going.	ループは、レーンではなく warp のものです。終わったレーンはマスクされるしかなく、いちばん遅いレーンが進み続けます。
+The machine crashes	機械がクラッシュする
+The map is 4 cells wide, row by row: cell = (y SHR 2)·4 + (x SHR 2). The starter has the two terms the other way round.	マップは幅 4 マスで、行ごとに並んでいます：マス番号 = (y SHR 2)·4 + (x SHR 2)。最初のコードでは、この 2 つの項が逆になっています。
+The map is stored row by row. The starter reads it column by column. Which map cells are read correctly anyway?	マップは行ごとに保存されています。最初のコードはそれを列ごとに読んでいます。どのマップのマスは、それでも偶然正しく読めている？
+The mask switches off a lane's writes, not its registers. SHFL reads them anyway, so a masked-off lane hands over a ghost of its old value.	マスクが止めるのはレーンの書き込みで、レジスタではありません。SHFL はそれでも読めるので、マスクされたレーンは古い値の幽霊を渡します。
+The new picture	新しい絵
+The night-watch ring has 32 posts, rom[0..32]. Each post reports the sum of itself and the next three clockwise: out[lane] = rom[lane] + rom[lane+1] + rom[lane+2] + rom[lane+3], wrapping around.\nThe old program has every lane crawl along the ring, loading four times — 128 loads for 32 numbers.\nThe bus allows 32. Load once, then pass the readings sideways.	夜回りのリングには 32 の見張りがあり、読み値は rom[0..32] にあります。各見張りは、自分と時計回りの次の 3 つの合計を報告します：out[lane] = rom[lane] + rom[lane+1] + rom[lane+2] + rom[lane+3]、端は回り込みます。\n旧プログラムは、各レーンにリングをたどらせて 4 回読み込むので、32 個の数に 128 回の読み込みになります。\nバスが許すのは 32 回です。1 回読んで、読み値を横に渡しましょう。
+The observatory needs the total of all 32 readings in rom[0..32], written to out[0].\nThe old program sends lane 0 around the loop 32 times while the rest wait.\nThe dome closes in 24 cycles. Let the lanes add in pairs, then pairs of pairs.	天文台では、rom[0..32] にある 32 個の読み値の合計を out[0] に書く必要があります。\n古いプログラムはレーン 0 にループを 32 周させ、その間ほかのレーンは待っています。\nドームは 24 サイクルで閉じます。レーンどうしで 2 つずつ足し、さらにそれを 2 つずつ足させましょう。
+The odd lanes run first while the even ones wait, then the mask flips. Divergence costs the sum of both paths.	奇数レーンが先に走って偶数レーンは待ち、それからマスクが反転します。発散の代償は両方の経路の合計です。
+The old picture	古い絵
+The racing cabinet's road is a 16×16 strip in rom[0..256].\nScroll it left one pixel per frame: pixel (x,y) shows strip column (x + CLOCK) mod 16.\nThe strip loops forever — what leaves on the left comes back on the right.	レース筐体の道路は rom[0..256] にある 16×16 の帯です。\n1 フレームに 1 ピクセルずつ左へスクロールします：ピクセル (x,y) には帯の (x + CLOCK) mod 16 列目を表示します。\n帯は永遠にループします——左から出たものは右から戻ってきます。
+The replay now stops at the right one.	リプレイは正しいステップで止めてある。
+The result lands on beat 4. Prism has no interlock: beats 2 and 3 run anyway and see whatever r0 held before.	結果は 4 拍目に届きます。Prism にはインターロックがありません：2 拍目と 3 拍目はそのまま実行され、r0 に前から入っていた値を見ます。
+The ring of 32 sensors smooths its readings: out[lane] = rom[lane] + rom[lane + 1], wrapping 31 back to 0.\nThe old program reads every value twice — 64 loads for 32 numbers.\nThe memory bus allows 32. Each lane already holds its own reading; borrow the neighbour's.	32 個のセンサーが輪になって読み値を平滑化します：out[lane] = rom[lane] + rom[lane + 1]、31 の次は 0 に戻ります。\n古いプログラムはどの値も 2 回読みます——32 個の数に 64 回の読み込み。\nメモリバスが許すのは 32 回。各レーンは自分の読み値をもう持っています。隣のものを借りましょう。
+The same circuit draws a new picture each frame because one input — time — changed.	同じ回路が毎フレーム新しい絵を描くのは、入力の 1 つ——時間——が変わったからです。
+The same — the palette eats the savings	同じ——パレットが節約分を食いつぶす
+The scoreboard in out[0..32] already shows rom[0..32]. Flagged players earned a double.\nrom[32 + lane] is 1 for a flagged player, 0 otherwise.\nDouble only the flagged scores; every other score must stay exactly as it is.	out[0..32] のスコアボードには、すでに rom[0..32] が表示されています。フラグの立ったプレイヤーは得点 2 倍を獲得しました。\nrom[32 + lane] は、フラグの立ったプレイヤーなら 1、それ以外は 0 です。\nフラグの立った得点だけを 2 倍にしてください。ほかの得点はそのまま残す必要があります。
+The screen goes dark; arrays and grids remain.	画面は消え、配列とグリッドが残る。
+The second LD fetches a value that lane + 1 has already loaded into its own r0.	2 つ目の LD が取ってくる値は、レーン lane + 1 がすでに自分の r0 に読み込んでいます。
+The shift copies the sign bit into every bit: −1 for negatives, 0 otherwise. A comparison with no compare.	このシフトは符号ビットを全ビットに複製します：負の数なら −1、それ以外は 0。比較命令を使わない比較です。
+The signal tower runs in one of two modes, written in rom[32]. In mode 0 every reading in rom[0..32] goes through six rounds of x → 3x + 1; in mode 1, six rounds of x → 2x + 3. Results go to out[lane].\nThe old program computes both modes for everyone and picks one at the end. Every lane reads the same mode — so only one branch should ever run.	信号塔は 2 つのモードのどちらかで動き、モードは rom[32] に書かれています。モード 0 では rom[0..32] の各読み値に x → 3x + 1 を 6 回かけ、モード 1 では x → 2x + 3 を 6 回かけます。結果は out[lane] へ。\n旧プログラムは全員のために両方のモードを計算し、最後に片方を選びます。どのレーンも同じモードを読むので、走らせるべき分岐は 1 つだけのはずです。
+The star chart has 32 brightness readings in rom[0..32]. Each must be tripled into out[0..32].\nThe old program makes lane 0 do all the work while 31 lanes watch.\nIt is correct. It is also far too slow: the target is 8 cycles.	星図には、rom[0..32] に 32 個の明るさの読み取り値がある。それぞれを 3 倍にして out[0..32] に書き込むこと。\n古いプログラムは、0 番レーンに全部の仕事をさせ、残りの 31 レーンは見ているだけ。\n結果は正しい。だが遅すぎる。目標は 8 サイクルだ。
+The starter draws the sprite, plus smeared copies around it. Which pixels should not read ROM at all?	最初のコードはスプライトを描きますが、その周りに引きずったような複製も出ます。そもそも ROM を読むべきでないピクセルは？
+The starter handles lanes below 300 and leaves everybody else untouched. Those other lanes need an ELSE.	最初のコードは 300 未満のレーンを処理し、ほかのレーンには手を付けません。そのほかのレーンには ELSE が必要です。
+The starter lights row 0 forever. Which input changes from one frame to the next?	最初の回路はずっと行 0 を光らせています。フレームごとに変わる入力はどれ？
+The starter only frames the left edge. MUX's ? counts any non-zero as yes — so adding two 0/1 tests already means 'either'.	最初の回路は左の辺にしか額縁をつけていません。MUX の ? は 0 以外をすべて「はい」とみなします——だから 0/1 の判定を 2 つ足すだけで、もう「どちらか」の意味になります。
+The starter rotates x as it is stored, 0..15. At angle 0 it is still wrong. Why?	最初のコードは、格納されたままの x（0..15）を回転させます。角度 0 でも間違っています。なぜ？
+The starter's SEL forces every lane through both loops. Does any lane ever need the loop it throws away?	最初のコードの SEL は、どのレーンにも両方のループを通らせます。捨てるほうのループを必要とするレーンはありますか？
+The starter's colours shift and stripe. Is it reading the right bits for each x?	最初のコードは色がずれて縞模様になります。各 x について、正しいビットを読んでいますか？
+The station's well gauge fills the sign with water from the bottom: the lowest (CLOCK AND 15) rows are colour 12, the rest colour 1.\nTonight the water hangs from the ceiling.\nFirst point at the moment the first wrong bulb is written, then fix the circuit.	駅舎の井戸水位計は、看板の下から水を満たしていく。下から (CLOCK AND 15) 行が色 12、残りは色 1。\n今夜は、水が天井から垂れ下がっている。\nまず最初の誤った電球が書かれた瞬間を指し示し、それから回路を直そう。
+The tower is drawn as a cylinder from tables. A real renderer would transform and raster every triangle, as in 4-2 to 4-4.	この塔は表を使って円柱として描いています。本物のレンダラーなら、4-2 から 4-4 のように、すべての三角形を変換してラスタライズするでしょう。
+The value it still holds in its register	レジスタにまだ残っている値
+The vertex transform	頂点変換
+The warp has both odd and even numbers. How many of IF's and ELSE's instructions does it issue?	warp には奇数も偶数もあります。IF 側と ELSE 側の命令を、それぞれいくつ発行するでしょう？
+The warp has one instruction stream. It runs the IF part with one group of lanes on, then the ELSE part with the other group on: 3 + 2.	warp の命令の流れは 1 本です。一方のグループのレーンを有効にして IF 部を実行し、続いて、もう一方のグループを有効にして ELSE 部を実行します：3 + 2。
+The warp issues one instruction per cycle for all 32 lanes. How many cycles does the starter take?	warp は 1 サイクルに 1 命令を 32 レーンぶん発行します。最初のプログラムは何サイクルかかる？
+The water sum stays below 65536, so it never spills into the high half-word. One butterfly adds both at once; AND and SHR pull them apart.	水の合計は 65536 未満なので、上位半ワードにあふれ出ません。バタフライ 1 回で両方を同時に足し、AND と SHR で分けます。
+The well gauge logs 32 inflows in rom[0..32]. Each lane must report the running total so far:\nout[lane] = rom[0] + rom[1] + … + rom[lane].\nThe first step is wired. It only looks one lane back — keep doubling the distance.	井戸水位計は、rom[0..32] に 32 回の増水を記録している。各レーンは、そこまでの累計を報告すること：\nout[lane] = rom[0] + rom[1] + … + rom[lane]。\n最初のステップは配線済みだが、1 レーン前しか見ていない——距離を倍にしていこう。
+The whole town	町じゅう
+The wind-tower model is 32 vertices, one per lane: x at rom[lane] and depth z at rom[32 + lane]. Its axis stands at x = 8, z = 0.\nTurn it by the angle whose cos·64 and sin·64 are rom[64] and rom[65]: x' = x·cos − z·sin, z' = x·sin + z·cos. Then project: out[lane] = 8 + x'·16 / (16 + z').\nPrism cannot divide. rom[106 + z'] holds 1024 / (16 + z') for z' from −10 to 10. Within 1 pixel counts.	風塔モデルは 32 頂点で、1 レーンに 1 つ。x は rom[lane]、深度 z は rom[32 + lane]。中心軸は x = 8、z = 0 に立つ。\n角度で回転させる。cos·64 と sin·64 が rom[64] と rom[65]：x' = x·cos − z·sin、z' = x·sin + z·cos。そして投影：out[lane] = 8 + x'·16 / (16 + z')。\nPrism は割り算ができない。rom[106 + z'] に、z' が −10 から 10 のときの 1024 / (16 + z') が入っている。誤差 1 ピクセル以内なら正解。
+There is no column 16: the stripe wraps round to column 0, where the next frame will put its head.	16 列目はありません：帯は 0 列目に回り込み、次のフレームでは先頭がそこに来ます。
+They are all built on one idea: run the same small program on many pieces of data at once. A screen does not draw one pixel after another. It asks every pixel the same question, together.	それらはすべて、ひとつの考えに基づいています：同じ小さなプログラムを、多くのデータに同時に走らせること。画面はピクセルを 1 つずつ順に描くのではありません。すべてのピクセルに、同じ問いを一斉に投げかけるのです。
+They share one instruction stream, so they cannot leave. The active mask switches their writes off until ENDIF.	同じ命令の流れを共有しているので、抜け出せません。アクティブマスクが ENDIF まで書き込みをオフにします。
+Thirty-Two Stars	32 の星
+Thirty-Two in Step	32 レーンの足並み
+Thirty-two lanes, one instruction stream.	32 本のレーン、ひとつの命令の流れ。
+Thirty-two wells report their water level in rom[0..32]; the safe bound is rom[32].\nIf every well is at or above the bound, all lanes write 1 to their out cell. If even one is below, all write 0.\nThe old program walks the wells one at a time. The caravan leaves in 24 cycles — ask the whole warp at once.	32 の井戸が rom[0..32] に水位を報告し、安全ラインは rom[32] です。\nすべての井戸が安全ライン以上なら、全レーンが自分の out の欄に 1 を書きます。1 つでも下回っていれば、全員が 0 を書きます。\n旧プログラムは井戸を 1 つずつ巡ります。キャラバンは 24 サイクル後に出発します——warp 全体で一度に尋ねましょう。
+This bulb's address: Y·16 + X.	この電球のアドレス：Y·16 + X。
+This bulb's column, 0–15.	この電球の列、0–15。
+This bulb's row, 0–15.	この電球の行、0–15。
+This is warp divergence, the best known way to lose GPU performance. Nested ifs multiply the effect.	これが warp の発散で、GPU の性能を落とす方法としていちばんよく知られています。if が入れ子になると、効果は掛け算で膨らみます。
+This level can now earn at most two stars.	このステージで獲得できる星は、最大 2 つになった。
+This machine is still being restored.	このマシンはまだ修復中です。
+This map holds 16 numbers plus 64 tile pixels. How many values would a plain 16×16 picture need?	このマップには 16 個の番号と 64 個のタイルピクセルが入っています。普通の 16×16 の絵なら値はいくつ必要？
+This program cannot be shown as blocks.	このプログラムはブロックで表示できません。
+This work belongs to another editor.	この作品は別のエディタのものです。
+Thread 70 runs on which warp, and as which lane of it?	スレッド 70 はどの warp で動き、そのうち何番のレーンになる？
+Three Beats Later	3 拍後
+Three Dimensions and Rasterization	三次元とラスタライズ
+Three lines: LD r0, [lane] / MUL r0, r0, 3 / ST [lane], r0.	3 行：LD r0, [lane] / MUL r0, r0, 3 / ST [lane], r0。
+Times the body repeats (0–64).	本体をくり返す回数（0–64）。
+Title	タイトル
+To the bench	作業台へ
+Tonight the sign must move. Paint the wall colour 1.\nA 4×4 block in colour 14 covers rows 6..9 and columns (CLOCK AND 7) to +3.\nFive different frames are checked, so the block has to follow the clock.	今夜、看板を動かします。壁を色 1 で塗ってください。\n色 14 の 4×4 ブロックが行 6..9、列 (CLOCK AND 7) から +3 までを占めます。\n5 つの異なるフレームを確認するので、ブロックは時計に合わせて動く必要があります。
+Too many parts: the board has 16 registers.	部品が多すぎます：ボードのレジスタは 16 個です。
+Transposed indexing is among the most common GPU bugs, and it rarely crashes: the image or matrix is simply wrong.	転置した添字は GPU でも指折りのよくあるバグで、めったにクラッシュしません：画像や行列が、ただ間違った結果になります。
+Tree reduction	木構造リダクション
+Triangles, depth, and a pixel asking where it is.	三角形、深度、そして「自分はどこ？」と問うピクセル。
+Turning and scaling both pivot on the origin. Move the axis to the origin first (x − 8), and move it back last (+ 8).	回転も拡大縮小も原点を支点にします。まず軸を原点へ移し（x − 8）、最後に元へ戻します（+ 8）。
+Twice — once for each edge	2 回——辺ごとに 1 回
+Two	2 回
+Two faces of the wind-tower model pass through each other. Face A: edges at rom[0..9], depth plane at rom[9..12], colour rom[12]. Face B: the same at rom[16..29].\nA depth plane is a line like an edge: EDGE r, [9] gives face A's depth at this pixel. Smaller is nearer.\nEvery pixel shows the nearest face that covers it, or 0. Drawing A and then B is not enough: each is in front somewhere.	風塔モデルの 2 つの面が、互いに貫通している。面 A：辺は rom[0..9]、深度平面は rom[9..12]、色は rom[12]。面 B：同じ構成で rom[16..29]。\n深度平面は辺と同じく直線だ。EDGE r, [9] は、このピクセルでの面 A の深度を返す。小さいほど手前。\n各ピクセルには、それを覆う最も手前の面を表示し、なければ 0。A を描いてから B を描くだけでは足りない：どちらも、どこかでは手前にある。
+Two lookups, one after the other: the map tells you which tile, the tile tells you which colour.	2 回の参照を順番に：マップがどのタイルかを教え、タイルがどの色かを教えます。
+Two numbers have the same strict sign exactly when their product is positive. e0·e1 > 0 and e1·e2 > 0 covers both windings.	2 つの数が厳密に同じ符号になるのは、積が正のときだけです。e0·e1 > 0 かつ e1·e2 > 0 なら、どちらの並び順もカバーできます。
+Two ships, two boxes. The debug overlay paints box A in 3, box B in 4, and their overlap in 15.\nThe A test is wired already; it leaves 0 in r8 inside A and −1 outside.\nAdd B, then let the four colours at rom[8..12] (none, A, B, both) do the rest.	2 機の宇宙船に、2 つの当たり判定の箱。デバッグ表示は箱 A を 3、箱 B を 4、重なりを 15 で塗ります。\nA の判定は配線済みで、A の内側では r8 に 0、外側では −1 を残します。\nB を追加し、あとは rom[8..12] の 4 色（どちらでもない、A、B、両方）に任せましょう。
+Undo	元に戻す
+Uniform branches are free	一様な分岐は無料
+Upside-Down Water Level	逆さの水位
+VALUE	値
+VOTE.ANY/ALL p, q — one answer for the whole warp.	VOTE.ANY/ALL p, q — warp 全体でひとつの答え。
+Vault · Gen 3	Vault · 第3世代
+Visibility is a per-pixel question. Keep the nearest depth seen so far and order stops mattering.	可視性はピクセルごとの問いです。それまでに見た最も近い深度を覚えておけば、描く順番は関係なくなります。
+Volume	音量
+Vote on 2·water ≥ load before packing. At the end lane 0 stores the water total, lane 1 the load total, every other lane the vote — pick with SETP.EQ and SEL.	詰める前に、2·水 ≥ 荷 で投票します。最後にレーン 0 が水の合計、レーン 1 が荷の合計、それ以外のレーンが投票結果を保存します——SETP.EQ と SEL で選びます。
+Votes only cover one warp. Agreeing across a whole block needs a barrier and shared memory.	投票がカバーするのは 1 つの warp だけです。ブロック全体で合意するには、バリアと共有メモリが必要です。
+WALKTHROUGH · CAPS AT ★★	解答 · 最大 ★★
+WHAT OC-1 SIMPLIFIES	OC-1 が簡略化している点
+WHERE TO LOOK	どこを見るか
+WHICH MECHANISM	どの仕組みか
+Waiting for the slowest	いちばん遅いものを待つ
+Walkthrough opened	解答を開きました
+Warp 2, lane 6	warp 2、レーン 6
+Warp 2, lane 70	warp 2、レーン 70
+Warp 3, lane 6	warp 3、レーン 6
+Warp shuffles	warp シャッフル
+Warp votes	warp の投票
+Warp-instructions issued, worst test case.	発行した warp 命令数（最悪のテストケース）。
+Warp-level toolbox	warp レベルの道具箱
+Warps tile the threads	warp がスレッドを敷き詰める
+Watch frame 15: the stripe should cover columns 15 and 0, but column 0 stays dark. What does the circuit do when X − counter goes negative?	フレーム 15 を見てください：帯は 15 列目と 0 列目を覆うはずなのに、0 列目が暗いままです。X − カウンタ が負になったとき、回路は何をしている？
+Watch the Lanes view: which cells should have stayed the same?	レーン表示を見てください：変わらないはずだったセルはどれ？
+Watch the right edge of the starter: the picture there is one row too low. Which number grew too big?	最初のコードの右端を見てください：そこだけ絵が 1 行下にずれています。大きくなりすぎた数はどれ？
+Watch your kernel drive the machine live.	あなたのカーネルがマシンをリアルタイムで動かすのを見よう。
+Water totals up to 8000, load totals up to 17000. Packed as water + load·65536, how many reductions do both sums need?	水の合計は最大 8000、荷の合計は最大 17000 です。水 + 荷·65536 とパックすると、2 つの合計に必要なリダクションは何回？
+Water: (Y + (CLOCK AND 7)) ≥ 14. Lamp: (ADDR AND 0xEE) = 0x22, times (CLOCK AND 8). Inside: ((X+1) AND 14) × ((Y+1) AND 14).	水：(Y + (CLOCK AND 7)) ≥ 14。船灯：(ADDR AND 0xEE) = 0x22 に (CLOCK AND 8) を掛ける。内側：((X+1) AND 14) × ((Y+1) AND 14)。
+Well keeper	井戸守
+Whatever r6 held before: here, 0	r6 に前から入っていた値：ここでは 0
+When lanes disagree, the rest wait.	レーンの意見が割れたら、残りは待つ。
+When lanes disagree, the warp runs each side in turn. The cost is the sum of the sides, not the larger.	レーンの意見が割れると、warp は各側を順に走らせます。コストは、大きいほうではなく、各側の合計です。
+When neighbours need overlapping data, each value should come from memory once and travel between lanes in registers.	隣り合うレーンが重なるデータを必要とするときは、各値はメモリから 1 回だけ読み、レジスタでレーン間を受け渡すべきです。
+When the data decides the branch, every warp pays for both sides. Selection made the choice free.	データが分岐を決めると、どの warp も両側の代償を払います。選択命令なら、その選択はタダです。
+When the values have no rule, memory is the only way to produce them. Compute the address, then read.	値に規則がないとき、それを生み出せるのはメモリだけです。アドレスを計算して、読みましょう。
+When two particles land on one cell, the last store wins. Real GPUs give no ordering guarantee at all.	2 つの粒子が同じセルに着地すると、最後の書き込みが勝ちます。実際の GPU は順序をまったく保証しません。
+Whenever: the warp waits for it	いつでも：warp が待ってくれる
+Where B covers: SETP.LT p2, depthB, depthA / SEL colour, p2, colourB, colourA. Interleave the two faces' work so each result has three beats to land.	B が覆う場所では：SETP.LT p2, 深度B, 深度A / SEL 色, p2, 色B, 色A。2 つの面の仕事を交互に並べ、どの結果にも届くまで 3 拍の余裕を与えましょう。
+Which half a particle is in has nothing to do with which warp it belongs to, so all eight warps diverge.	粒子がどちらの半分にいるかは、どの warp に属するかとは無関係です。だから 8 つの warp すべてが発散します。
+Which lanes does the starter's SHFL ask? Are they all lanes that the IF has kept switched on?	最初のコードの SHFL は、どのレーンに尋ねていますか？ それらはすべて、IF が有効なままにしたレーンですか？
+Which lanes stay dark: the odd ones or the even ones? Which side of the fork are they on?	暗いままなのは奇数レーンと偶数レーンのどちら？ それは分かれ道のどちら側？
+Whichever side has more lanes	レーンの多いほう
+Whole matrices per instruction.	1命令で行列まるごと。
+Wire one node into both ports of a MUL to square it. Square (X − 8) and (Y − 8) and add them; build r from CLOCK AND 3, plus 2, and square that too.	同じノードを MUL の両方の口につなぐと二乗になります。(X − 8) と (Y − 8) をそれぞれ二乗して足し、r は CLOCK AND 3 に 2 を足して作り、これも二乗します。
+With inA = r8 + 1 and inB = r9 + 1, the colour sits at rom[8 + inA + 2·inB].	inA = r8 + 1、inB = r9 + 1 とすると、色は rom[8 + inA + 2·inB] にあります。
+With lanes on both sides the warp ran the ADD and the SUB anyway. SEL keeps both and replaces three bookkeeping instructions with one.	両側にレーンがいたので、warp はどのみち ADD も SUB も実行しました。SEL は両方を残し、3 つの管理用命令を 1 つに置き換えます。
+With no interlock, the program has to schedule around every result's latency. Independent work fills the gap for free.	インターロックがなければ、プログラムがすべての結果のレイテンシを避けて命令を並べる必要があります。依存しない仕事なら、その隙間をタダで埋められます。
+Without wrapping, at frame 3 pixel (14,2) reads strip address 2·16 + 17. What does it show?	ラップしないと、フレーム 3 でピクセル (14,2) は帯のアドレス 2·16 + 17 を読みます。何が表示される？
+Worst-case lane utilization:	最悪ケースのレーン稼働率：
+Wrap addressing	ラップアドレッシング
+Wrap after the subtraction: (X − CLOCK) AND 15 is how far a column trails the head, whatever the clock says. Widening the counter only hides the stripe for 16 frames.	回り込みは引き算のあとに行います：(X − CLOCK) AND 15 は、時計がいくつでも、その列が先頭からどれだけ遅れているかを表します。カウンタを広げても、帯が 16 フレームのあいだ見えなくなるだけです。
+Wrapping round	回り込む
+Write it in order first, with NOPs wherever a result has not landed yet. Then pull independent work up into those NOPs.	まず順番どおりに書き、結果がまだ届いていない所にはすべて NOP を置きます。それから依存しない仕事を、その NOP の位置まで引き上げます。
+X → ADD (B = 1) → AND (B = 14); the same for Y; MUL the two → MUX ?, with 1 → 2 and 0 → 9 → PIXEL.	X → ADD（B = 1）→ AND（B = 14）。Y も同様。2 つを MUL → MUX の ?、1 → 2、0 → 9 → PIXEL。
+X − CLOCK → AND (B = 15) → A<B (B = 2) → MUX: 1 → 10, 0 → 0.	X − CLOCK → AND（B = 15）→ A<B（B = 2）→ MUX：1 口 = 10、0 口 = 0。
+XOR d, a, b — bitwise exclusive or.	XOR d, a, b — ビットごとの排他的 OR。
+Y < h lights the first h rows from the top. Which rows does the station want?	Y < h は、上から h 行を点灯させる。駅舎が求めているのはどの行？
+YOUR CIRCUIT, COMPILED: EVERY BULB RUNS THESE LINES	あなたの回路のコンパイル結果：すべての電球がこの行を実行します
+YOUR PREDICTION	あなたの予想
+You could not draw four edges one after another. Each bulb merged every condition into one answer and wrote it once.	4 つの辺を 1 本ずつ順に描くことはできませんでした。各電球はすべての条件を 1 つの答えにまとめ、それを一度だけ書いたのです。
+You have built both halves before: the Tile Map and the Sprite. What is new is choosing between them.	両方の半分はもう作ったことがあります：「タイルマップ」と「スプライト」。新しいのは、そのどちらかを選ぶことだけです。
+You never wrote a loop over 256 pixels. You wrote one pixel's rule, and the machine ran it everywhere.	256 ピクセルを回るループは書きませんでした。書いたのは 1 ピクセルのルールだけで、機械がそれをすべての場所で実行したのです。
+You predicted this before.	この問題は以前に予想しています。
+Your circuit never asked 'if'. Every pixel computed both answers and a selector picked one.	あなたの回路は一度も「もし」と問いませんでした。どのピクセルも両方の答えを計算し、セレクタが片方を選んだのです。
+Your earlier solution earned more stars — that record stays.	以前の解答のほうが星が多いので、その記録が残ります。
+Your kernel, running every frame. Each bulb is one thread; each thread ran your program alone and never saw its neighbours.	あなたのカーネルが毎フレーム動いています。電球 1 つが 1 スレッド。どのスレッドもひとりでプログラムを実行し、隣を一度も見ていません。
+Zero — there is no such lane	ゼロ——そんなレーンはない
+Zero, because that lane is off	ゼロ。そのレーンは止まっているから
+]\n	SUB r0, x, r0       ; x - x0, needs >= 0 | x - x0、>= 0 が必要\n
+`lane` is 0..31, one per lane. Use it as the address for both the load and the store.	`lane` は 0..31 で、レーンごとに 1 つ。これを読み込みと書き込みの両方のアドレスに使います。
+all 32 lanes work	32 レーンすべてが稼働
+back	裏
+column	列
+cos 0 is not exactly 64	cos 0 がちょうど 64 ではない
+cycles	サイクル
+d = 4 only	d = 4 のときだけ
+divergent: some lanes wait	発散：一部のレーンが待機
+edge = CLOCK AND 7. Inner MUX: ? = (Y − 6) SHR 2, 1 → 1, 0 → 14. Outer MUX: ? = (X − edge) SHR 2, 1 → 1, 0 → inner.	端 = CLOCK AND 7。内側の MUX：? = (Y − 6) SHR 2、1 → 1、0 → 14。外側の MUX：? = (X − 端) SHR 2、1 → 1、0 → 内側。
+frame	フレーム
+front	表
+got	結果
+hidden	隠し
+idle lane	待機レーン
+in flight	実行中
+is not available in this level.	は、このステージでは使えない。
+issues	発行
+lane	レーン
+lanes busy	レーン稼働
+line	行
+loads	読み込み
+needs	必要：
+pixel	ピクセル
+read before it landed	届く前に読んだ
+read too early	早すぎる読み出し
+result lands	結果が届く
+row	行
+size	サイズ
+stores	書き込み
+stores fell outside the buffer and were dropped.	回の書き込みがバッファの外に出たため、破棄されました。
+the beat that read a register too early	レジスタを早すぎるタイミングで読んだ拍
+the first SHFL that asked for a lane beyond the end of the warp	warp の端を越えたレーンを求めた最初の SHFL
+the first SHFL that read a lane the mask had switched off	マスクが止めているレーンを読んだ最初の SHFL
+the first bulb that should light but stays dark at the seam	継ぎ目で、点灯すべきなのに暗いままの最初の電球
+the first load that fetches again what another lane already fetched	ほかのレーンがすでに取ってきたものを、もう一度取りに行く最初の読み込み
+the first pixel written with the wrong tile	間違ったタイルで書かれた最初のピクセル
+the first store into the buffer the beam is showing	ビームが表示中のバッファへの最初の書き込み
+the first wrong bulb being written, on its warp	最初に間違った電球が書かれたステップとその warp
+the store that issued while half the warp was masked off	warp の半分がマスクされたまま発行された書き込み
+the watchdog stopped the kernel. A loop that never ends?	ウォッチドッグがカーネルを止めました。終わらないループでは？
+tid = warp·32 + lane: 70 = 2·32 + 6. The lane number never exceeds 31.	tid = warp·32 + lane：70 = 2·32 + 6。レーン番号が 31 を超えることはありません。
+u = x − rom[144], v = y − rom[145]; out = (u OR v) SHR 3; s = rom[80 + v·8 + u]; SEL s to 0 unless out = 0; SEL r0, p0, s, r0 when s ≠ 0.	u = x − rom[144]、v = y − rom[145]；out = (u OR v) SHR 3；s = rom[80 + v·8 + u]；out = 0 でなければ SEL で s を 0 に；s ≠ 0 のとき SEL r0, p0, s, r0。
+u = −4, v = 1, so the index is 1·8 − 4 = 4: a real sprite pixel. Memory has no idea it is a picture.	u = −4、v = 1 なので、インデックスは 1·8 − 4 = 4：実在するスプライトのピクセルです。メモリは、それが絵だとは知りません。
+want	期待値
+x and y both 2 or 3	x と y がどちらも 2 か 3
+x − x0 is negative left of the box. What does SHR by 31 turn any negative number into?	箱の左側では x − x0 が負になります。負の数を 31 ビット右シフトすると、どんな値になる？
+x'·64 = x·cos − z·sin. z' = (x·sin + z·cos) >> 6. Then x'·64 × rom[106 + z'] >> 12 is x'·16 / (16 + z').	x'·64 = x·cos − z·sin。z' = (x·sin + z·cos) >> 6。すると x'·64 × rom[106 + z'] >> 12 が x'·16 / (16 + z') になります。
+‹ Back to results	‹ 結果に戻る
+‹ Bench	‹ 作業台
+‹ Grid Hall	‹ グリッドホール
+↑ Up	↑ 上へ
+↓ Down	↓ 下へ

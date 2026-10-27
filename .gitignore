@@ -1,0 +1,10 @@
+/target
+**/*.rs.bk
+.DS_Store
+/dist
+
+# 字体源文件（7.9MB）不提交，用 tools/subset-font.sh 生成子集
+assets/fonts/NotoSansSC-Regular.otf
+
+# 字体子集构建环境
+.venv/

@@ -1,0 +1,28 @@
+[workspace]
+members = ["crates/ooc_core", "crates/ooc_app"]
+resolver = "3"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.97.1"
+license = "MIT"
+authors = ["ai4next"]
+
+[workspace.dependencies]
+bevy = { version = "0.20", default-features = false, features = ["2d", "audio", "wav", "complex_script_segmentation"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+oo_base = { path = "../oo_kit/crates/oo_base" }
+oo_kit = { path = "../oo_kit/crates/oo_kit" }
+
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = "symbols"

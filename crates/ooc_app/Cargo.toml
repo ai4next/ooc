@@ -1,0 +1,14 @@
+[package]
+name = "ooc_app"
+description = "Origin of Computing — restore the machines of the Museum of Lost Computing."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+bevy = { workspace = true }
+oo_base = { workspace = true }
+oo_kit = { workspace = true }
+ooc_core = { path = "../ooc_core" }
+serde_json = { workspace = true }

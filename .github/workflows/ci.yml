@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      # ooc 以路径依赖引用同级目录的 oo_kit。
+      - uses: actions/checkout@v4
+        with:
+          path: ooc
+      - uses: actions/checkout@v4
+        with:
+          repository: ai4next/oo_kit
+          path: oo_kit
+
+      - name: Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.97.1
+          components: rustfmt, clippy
+
+      - name: Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: ooc
+
+      # Bevy 在 Linux 上需要这些系统库（winit / 音频后端）。
+      - name: System deps
+        run: sudo apt-get update && sudo apt-get install -y libasound2-dev libudev-dev pkg-config
+
+      - name: Format
+        working-directory: ooc
+        run: cargo fmt --all --check
+
+      - name: Charset up to date
+        working-directory: ooc
+        run: tools/check-charset.sh
+
+      - name: Clippy
+        working-directory: ooc
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: Test
+        working-directory: ooc
+        run: cargo test --workspace
