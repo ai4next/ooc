@@ -260,21 +260,27 @@ PIX  r1                 ; 写到自己的像素 | write own pixel
 
 ## 8. 技术
 
-现有代码（`ooc_core` / `ooc_app`）已实现 40 关，其中第 1–4 章 32 关已全部补齐；v3 的改动集中在内容结构（128 关）与新机器：
+现有代码（`ooc_core` / `ooc_app`）已实现全部 128 关（16 章 × 8），每关的参考解在测试里拿满三星、初始方案不通过。
 
-| 模块 | 现状 | v3 需要 |
+| 模块 | 现状 | 仍需 |
 |---|---|---|
-| `isa` / `asm` / `vm` | OC-1：32 车道、8 warp、16 寄存器 + 4 谓词、IF/LOOP、SHFL/VOTE、LD/ST、PIX | 机器档案 `Machine`（车道、warp、延迟表、内存层级、指令上限）；Prism 无互锁写回；Vault 内存延迟、L1 缓存（行、组、逐出）、共享内存 bank、ATOM、BAR、CLOCK；纹理采样由 LD + LERP 实现；Atlas 多 SM + 网格 + 计分板 + FENCE / DMA；Lyra MMA / CVT / FP16 / INT8 / INT4；起源机 SEND / RECV、链路带宽、死锁检测、可注入的位翻转 |
-| `graph` | 蓝图编辑器，编译到 OC-1 | 不变；第 2 章起蓝图只做查看 |
-| `task` / `content` | 17 关，`Kind` = Build / Debug / Boss，按 `Wing` 分组 | 按圣经 §6.1：`kind` = Puzzle / Fault / Commission，`chapter`（1–16），`hidden`，`evidence`，`predict`，`client`；关号固定（1–3 谜、4 障、5–6 谜、7 障、8 托）；内容每章一个文件，共 16 个，id 以 [syllabus.md](syllabus.md) 为准 |
-| `grade` | 像素 / 内存比对 + 周期 / 规模星 | 隐藏用例；`Evidence` 计算；诊断规则表（§5.1 的 22 个 `why`，每个必须能单元测试） |
-| 新增 `analyze` | — | Analyzer：周期分类、占用率、Roofline 点；内存视图数据（含缓存命中 / 逐出） |
-| 新增 `seal` | — | 封印组件：内核 → 命名块，展开计周期 |
-| `ooc_app` | 标题、hub、工作台（两编辑器 + 屏幕 + Warp River）、结算、展演 | 接入 `oo_kit` 共享层：时间轴、指证、概念卡、译注、深井 hub、直方图、分享码、诊断面板；新增自由机台、Analyzer、内存视图、流水线视图、张量视图、机房图 |
+| `isa` / `asm` / `vm` / `mem` / `fp` | OC-1 指令集，`vm::Profile` 按机器开关：Lumen（16×16 屏、IF/LOOP、SHFL/VOTE、PIX）；Prism（结果三拍后写回、无互锁，`PRISM_UNITS` 按功能单元分延迟；DOT/RCP/LERP/EDGE，`Launch::WIDE` 32×32）；Vault（计分板、400 周期全局内存、L1 4 组 × 4 路 × 32 字行、32 bank 共享内存 8192 字、ATOM/BAR/CLOCK）；Atlas（4 SM × 32 warp、网格与 GSYNC、寄存器决定占用率与溢出、DMA、`ATLAS_WEAK` 的延迟可见存储与 FENCE）；Lyra（FP16/FP32、CVT 含 INT8 饱和、MMA 张量核、32 寄存器）；Origin（环形链路 SEND/RECV，L 40、B 4 字/周期、h 6，死锁检测，可注入位翻转）。INT4 未做 | — |
+| `graph` / `edit` | 蓝图编辑器编译到 OC-1；`edit` 给积木编辑器做结构化改写 | — |
+| `task` / `content` | `Task` 含 `chapter`、`slot`、`hidden`、`limit`、`goals`、`predict`、`clue`；`LevelKind` = Puzzle / Fault / Commission 由关号决定（4、7 障，8 托）；`content/ch01.rs`…`ch16.rs` 每章一个文件，机器共用部分在 `prism` / `vault` / `atlas` / `lyra` / `origin`；`notes.rs` 白砚笔记 16 页；`content/open/` 开放题骨架（每章 3 题，按直方图计分） | 开放题内容 |
+| `grade` | 公开 + 隐藏用例、容差、硬预算（`limit`）、两颗星的 `goals`、`Measure` 14 项指标；障的 `Task.clue` 指向 `grade::first_*` 或章内的查找函数，返回 `oo_base::Evidence { from, to, channel }`（回放步区间 + warp）；每个 `why` 都有单元测试（`tests/why.rs`，表见 levels.md） | `Evidence` 尚无 `why` 字段与 link / sm / addr 分量，诊断按查找函数区分 |
+| Analyzer 数据 | `vm::Analysis`：各 SM 发射 / 等待分类、可驻留 warp 数；`pipe` 给流水线视图；`MemLog` 记录缓存填入与逐出 | — |
+| `lab` | 自由机台：用战役的真实机器与回放，去掉目标、预算、故障和隐藏用例 | — |
+| 新增 `seal` | 进行中（另一分支） | 封印组件：内核 → 命名块，展开计周期 |
+| `ooc_app` | 标题、开场、设置、hub（16 章 / 6 机器 / 委托人）、简报与预测、工作台（代码 / 积木 / 蓝图编辑器、屏幕、Warp River、指证）、Memory / Analyzer / 流水线 / Tensor / 机房标签、结算与展演、白砚笔记、结局（留下 / 迁移）、自由机台 | 接 `oo_kit` 的直方图与分享码 |
 
-- 性能：单用例（Lumen）< 1 ms；Atlas 4096 线程一帧 < 20 ms；起源机终章一个字 < 50 ms；验收在后台线程。128 关的参考解与隐藏用例在 CI 里全部重放。
-- 调试变量：`OOC_FRESH / LANG / SCREEN / TASK / REF / RUN / SCREENSHOT`（另有 `OOC_TAB` 选工作台标签）。
-- 引擎需求逐项见 [levels.md §引擎需求](levels.md#引擎需求)（levels.md 将据 syllabus.md 重建）。
+- 性能目标：单用例（Lumen）< 1 ms；Atlas 4096 线程一帧 < 20 ms；起源机终章一个字 < 50 ms；验收在后台线程。128 关的参考解与隐藏用例在测试里全部重放。
+  - 实测（`cargo run -p ooc_core --example perf --release`，参考解，每项 15 次取中位数，Apple arm64，机器同时有其他负载，2026-10-30）：
+  - Lumen：first-light 0.008 ms；第 1–4 章 186 个用例中位 0.011 ms，最慢 0.061 ms（the-collision）。达标。
+  - Atlas：the-analyzer 4096 线程 0.75 ms；第 10–12 章恰好 4096 线程的 46 帧中位 3.9 ms，最慢 9.9–17 ms（the-race）。达标。比 4096 线程更大的帧仍超 20 ms：sand-atlas 4608 线程约 43 ms，the-hub 65536 线程 26–29 ms。
+  - 热点（已改）：`Machine::pick` 不再为每个驻留 warp 分配 `Instr::reads()` 的 `Vec`；`bank_passes` 用栈数组；竞争检测的写入表改成按块编号的 `Vec<u32>`。现在约 880 ns / warp 步。
+  - 起源机：first-words 15 个字共约 3.6 ms，每字 0.24 ms；给 14 个字前缀只说 1 个字约 3.6 ms。达标。
+- 调试变量（仅调试构建，见 `ooc_app/src/main.rs` 的 `boot`）：`OOC_FRESH`（空存档）、`OOC_LANG`、`OOC_SCREEN` = hub | intro | settings | notes | ending | manual | brief | bench | results | showcase、`OOC_TASK`=id、`OOC_REF`（载入参考解）、`OOC_RUN`（工作台里立即运行）、`OOC_POINT`=步（与 `OOC_RUN` 同用：跳到该回放步并指证）、`OOC_TAB`（工作台标签：brief / hints / listing / pipeline / memory / analyzer / tensor / room）、`OOC_DONE`=n（前 n 关记为三星）、`OOC_ENDING`=stay | migrate、`OOC_PAGE`=章（笔记页）、`OOC_LAB`（以自由机台打开 `OOC_TASK`）、`OOC_DESCENT`=秒（片尾下井镜头从该时刻开始）、`OOC_OPEN`=开放题 id、`OOC_SCREENSHOT`=路径（截图后退出）。
+- 引擎需求逐项见 [levels.md §引擎需求](levels.md#引擎需求)。
 
 ---
 

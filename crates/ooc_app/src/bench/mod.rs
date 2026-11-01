@@ -2,16 +2,17 @@
 
 use bevy::prelude::*;
 use bevy::sprite::Anchor;
+use bevy::tasks::AsyncComputeTaskPool;
 use oo_base::HintTier;
 use oo_kit::audio::Cue;
 use oo_kit::ui::{Actions, ButtonSpec, Tone, Ui};
 use ooc_core::content;
-use ooc_core::grade::{BuildError, Report, Verdict, grade};
+use ooc_core::grade::{BuildError, Report, Verdict, grade_with};
 use ooc_core::save::SaveData;
 use ooc_core::task::{Editor, Solution, View as TaskView};
 
 use crate::state::{Act, Game, Play, Screen, Sel, Session, Tab, t};
-use crate::{Ctx, View, code_ed, graph_ed, hub, river};
+use crate::{Ctx, View, code_ed, hub, river};
 
 /// Starts a fresh visit to task `i` with the player's saved work.
 pub fn open(s: &mut Session, game: &Game, i: usize) {
@@ -29,15 +30,59 @@ pub fn open(s: &mut Session, game: &Game, i: usize) {
     };
 }
 
+/// Opens open problem `k` with the player's saved work there. `task` stays
+/// on the chapter's commission, the level that opens the problems.
+pub fn open_problem(s: &mut Session, game: &Game, k: usize) {
+    let o = &content::open::opens()[k];
+    let home = content::tasks()
+        .iter()
+        .position(|t| t.chapter == o.task.chapter && t.slot == 8)
+        .unwrap_or(0);
+    open(s, game, home);
+    s.open = Some(k);
+    s.work = Some(game.save.work_for(&o.task));
+    s.cases = (o.task.cases)();
+    s.tab = Tab::Brief;
+}
+
+/// Opens the free bench on task `i`'s machine with the player's last
+/// experiment there.
+pub fn open_lab(s: &mut Session, game: &Game, i: usize) {
+    open(s, game, i);
+    s.lab = true;
+    let task = s.task();
+    s.work = Some(
+        game.save
+            .labs
+            .get(task.id)
+            .cloned()
+            .unwrap_or_else(|| task.starter.solution()),
+    );
+    s.cases = (task.cases)();
+    s.tab = Tab::Analyzer;
+    if !crate::machine::tabs(task).contains(&s.tab) {
+        s.tab = Tab::River;
+    }
+    crate::lab::open(s, game);
+}
+
 pub fn leave(cx: &mut Ctx) {
     save_work(cx);
     cx.go(Screen::Hub);
 }
 
 fn save_work(cx: &mut Ctx) {
+    if cx.s.lab {
+        return crate::lab::save(&mut cx.game, &cx.s);
+    }
     let id = cx.s.task().id;
     if let Some(w) = cx.s.work.clone() {
-        cx.game.save.work.insert(id.to_string(), w);
+        let to = if cx.s.lab {
+            &mut cx.game.save.labs
+        } else {
+            &mut cx.game.save.work
+        };
+        to.insert(id.to_string(), w);
         cx.game.touch();
     }
 }
@@ -53,6 +98,7 @@ pub fn build_error_text(e: &BuildError, l: oo_base::Lang) -> String {
                 a.line + 1,
                 sh
             ),
+            K::Seal(e) => format!("{} {}: {}", t(l, "Line", "第"), a.line + 1, e.text(l)),
             k => format!("{} {}: {:?}", t(l, "Line", "第"), a.line + 1, k),
         },
         BuildError::Graph(G::Cycle(_)) => {
@@ -99,27 +145,56 @@ pub fn build_error_text(e: &BuildError, l: oo_base::Lang) -> String {
             "这份作品属于另一种编辑器。",
         )
         .into(),
+        BuildError::Blueprint(u) => u.text(l),
     }
 }
 
 /// Builds and grades the work, then starts the replay of the first failing
 /// case (or the selected one when everything passes).
 pub fn run(cx: &mut Ctx) {
+    if cx.s.lab {
+        return crate::lab::run(cx);
+    }
     let task = cx.s.task();
-    let l = cx.lang();
     cx.s.invalidate();
     cx.s.sel = match cx.s.sel {
         Sel::Line(_) | Sel::Operand(..) | Sel::Node(_) | Sel::Port(..) => cx.s.sel,
         Sel::None => Sel::None,
     };
-    match grade(task, cx.s.work()) {
+    let (work, seals) = (cx.s.work().clone(), cx.game.save.seals.clone());
+    let job = AsyncComputeTaskPool::get().spawn(async move { grade_with(task, &work, &seals) });
+    cx.s.grading = Some(job);
+    cx.dirty();
+}
+
+/// Waits for the run being graded, as screenshots and boot shortcuts need it.
+pub fn finish_grading(cx: &mut Ctx) {
+    if let Some(job) = cx.s.grading.take() {
+        let result = bevy::tasks::block_on(job);
+        graded(cx, result);
+    }
+}
+
+/// Picks up a finished background run.
+pub fn poll_grading(mut cx: Ctx) {
+    if cx.s.grading.as_ref().is_some_and(|j| j.is_finished()) {
+        finish_grading(&mut cx);
+    }
+}
+
+fn graded(cx: &mut Ctx, result: Result<Report, BuildError>) {
+    let task = cx.s.task();
+    let l = cx.lang();
+    match result {
         Err(e) => {
             cx.s.error = Some(build_error_text(&e, l));
             cx.cues.play(Cue::Error);
         }
         Ok(rep) => {
-            cx.game.save.campaign.note_attempt(task.id);
-            cx.game.touch();
+            if !cx.s.lab && cx.s.open.is_none() {
+                cx.game.save.campaign.note_attempt(task.id);
+                cx.game.touch();
+            }
             // Hidden cases are never replayed: stay on a public one.
             cx.s.case = match rep.verdict {
                 Verdict::Wrong { case, .. } | Verdict::Timeout { case } if !rep.is_hidden(case) => {
@@ -170,6 +245,11 @@ pub fn trace_len(s: &Session) -> usize {
 
 /// Shows the verdict; scores the report the first time.
 pub fn reveal(cx: &mut Ctx) {
+    // A lab frame replays its kernels one after another.
+    if crate::lab::next_kernel(&mut cx.s) {
+        cx.dirty();
+        return;
+    }
     advance(&mut cx.s, usize::MAX);
     cx.s.play.playing = false;
     cx.s.play.revealed = true;
@@ -184,6 +264,31 @@ fn judge(cx: &mut Ctx) {
     let task = cx.s.task();
     let l = cx.lang();
     let Some(rep) = &cx.s.report else { return };
+    // Experiments are never scored.
+    if cx.s.lab {
+        save_work(cx);
+        return;
+    }
+    if let Some(k) = cx.s.open {
+        let o = &content::open::opens()[k];
+        let score = o.score_of(rep);
+        save_work(cx);
+        let Some(score) = score else {
+            cx.cues.play(Cue::Error);
+            return;
+        };
+        cx.s.improved = cx.game.save.note_open(o.task.id, score);
+        cx.cues.play(Cue::Success);
+        if cx.s.improved {
+            cx.toasts.push(
+                t(l, "New best", "新纪录"),
+                format!("{} · {score} {}", o.task.title.get(l), o.label().get(l)),
+            );
+            cx.cues.play(Cue::Star);
+        }
+        cx.game.touch();
+        return;
+    }
     let Some(outcome) = rep.outcome(task) else {
         let had =
             cx.s.hints
@@ -316,6 +421,7 @@ pub fn act(cx: &mut Ctx, a: Act) {
             if cx.s.report.is_some() && !cx.s.play.revealed {
                 cx.s.play.playing = !cx.s.play.playing;
             } else if cx.s.report.is_some() {
+                crate::lab::rewind(&mut cx.s);
                 restart(&mut cx.s, true);
                 cx.s.play.revealed = false;
             }
@@ -331,11 +437,13 @@ pub fn act(cx: &mut Ctx, a: Act) {
             }
         }
         Act::Rewind => {
+            crate::lab::rewind(&mut cx.s);
             restart(&mut cx.s, false);
-            cx.s.play.revealed = cx.s.judged;
+            cx.s.play.revealed = cx.s.judged && !cx.s.lab;
         }
         Act::Skip => {
             if cx.s.report.is_some() {
+                crate::lab::to_last(&mut cx.s);
                 reveal(cx);
             }
         }
@@ -351,7 +459,7 @@ pub fn act(cx: &mut Ctx, a: Act) {
             cx.s.probe = None;
         }
         Act::Tab(tab) => cx.s.tab = tab,
-        Act::Hint => {
+        Act::Hint if cx.s.open.is_none() => {
             if let Some(tier) = cx.s.hints.reveal_next() {
                 let id = cx.s.task().id;
                 cx.game.save.campaign.note_hint(id, tier as u8);
@@ -383,6 +491,7 @@ pub fn act(cx: &mut Ctx, a: Act) {
             cx.s.scroll = 0;
         }
         Act::ClearProbe => cx.s.probe = None,
+        Act::LabDo(a) => crate::lab::act(cx, a),
         Act::Point => {
             let i = cx.s.play.step.saturating_sub(1);
             point(cx, i);
@@ -395,16 +504,15 @@ pub fn act(cx: &mut Ctx, a: Act) {
             }
         }
         Act::Next => {
-            if cx.s.report.as_ref().is_some_and(Report::passed)
+            if !cx.s.lab
+                && cx.s.report.as_ref().is_some_and(Report::passed)
                 && cx.game.save.has_evidence(cx.s.task())
             {
                 cx.go(Screen::Results);
             }
         }
-        a => match cx.s.task().editor {
-            Editor::Graph(_) => graph_ed::act(cx, a),
-            Editor::Code(_) => code_ed::act(cx, a),
-        },
+        Act::Fold(k) => crate::seals::fold(cx, k),
+        a => crate::blueprint::act(cx, a),
     }
     cx.dirty();
 }
@@ -431,6 +539,9 @@ pub fn keys(
     }
     if ctrl && keys.just_pressed(KeyCode::KeyZ) {
         push(Act::Undo);
+    }
+    if keys.just_pressed(KeyCode::Tab) {
+        push(Act::Blueprint(!crate::blueprint::showing(&cx.s)));
     }
     if keys.just_pressed(KeyCode::Period) || keys.just_pressed(KeyCode::ArrowRight) {
         push(Act::Step);
@@ -533,8 +644,8 @@ pub fn tick(time: Res<Time>, mut cx: Ctx) {
         cx.s.play.acc -= n as f32;
         let to = cx.s.play.step + n;
         advance(&mut cx.s, to);
-        // The pipeline view is drawn per step, not updated in place.
-        if cx.s.tab == Tab::Pipeline {
+        // These views are drawn per step, not updated in place.
+        if crate::machine::follows_replay(cx.s.tab) {
             cx.dirty();
         }
     }

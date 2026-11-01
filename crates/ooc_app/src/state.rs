@@ -5,7 +5,7 @@ use oo_base::{HintGate, Lang};
 use oo_kit::save::SaveSlot;
 use ooc_core::content;
 use ooc_core::edit::Operand;
-use ooc_core::grade::Report;
+use ooc_core::grade::{BuildError, Report};
 use ooc_core::graph::NodeKind;
 use ooc_core::isa::OpKind;
 use ooc_core::save::SaveData;
@@ -23,6 +23,12 @@ pub enum Screen {
     Results,
     Showcase,
     Settings,
+    /// Bai Yan's notes, one page per chapter, with ORI's corrections.
+    Notes,
+    /// After the last commission: Cen Li's offer and the player's choice.
+    Ending,
+    /// ORI's handbook: ops, machines, tools and concept cards.
+    Manual,
 }
 
 /// Bottom-strip tabs on the bench.
@@ -32,9 +38,19 @@ pub enum Tab {
     River,
     /// Prism and later: issue and write-back beats of one warp.
     Pipeline,
+    /// Vault and later: cache lines against cycles.
+    Memory,
+    /// Atlas and later: how each SM spent the run.
+    Analyzer,
+    /// Lyra and later: the tiles of one MMA.
+    Tensor,
+    /// Origin: messages on the links between SMs.
+    Room,
     Brief,
     Hints,
     Listing,
+    /// Free bench: slots, input, screen, teaching and share codes.
+    Lab,
 }
 
 /// Every button in the game pushes one of these.
@@ -52,12 +68,33 @@ pub enum Act {
     Fullscreen,
     Motion,
     Toasts,
+    MusicUp,
+    MusicDown,
+    /// Notes while a replay or the Showcase runs.
+    SimSound,
     // Hub / brief
     Open(usize),
     /// Show chapter `n` on the hub.
     Chapter(u8),
     Predict(usize),
     StartBench,
+    /// Open the free bench on task `i`'s machine.
+    Lab(usize),
+    /// Open problem `k` (an index into `content::open::opens()`).
+    Problem(usize),
+    /// A free-bench control.
+    LabDo(crate::lab::LabAct),
+    /// Turn to chapter `n`'s page of the notes.
+    Page(u8),
+    /// The final choice: stay (true) or migrate.
+    Choose(bool),
+    /// Play chapter `n`'s opening dialogue.
+    Opening(u8),
+    /// Advance the opening by one line.
+    Line,
+    SkipOpening,
+    /// Open or close ORI's menu on the hub.
+    OriMenu,
     // Bench: run
     Run,
     Pause,
@@ -95,9 +132,29 @@ pub enum Act {
     SmemScale(bool),
     MoveLine(bool),
     Scroll(i32),
+    /// Show the blueprint (`true`) or the microcode.
+    Blueprint(bool),
     // Results
     Next,
     Showcase,
+    /// Store the passing work as this level's seal.
+    Seal,
+    /// Code editor: insert `USE` of catalogue seal `i`.
+    UseSeal(usize),
+    /// Warp River: fold or unfold the report's seal span `i`.
+    Fold(usize),
+    /// Showcase: feed input `i` (0 = the live scene).
+    ShowInput(usize),
+    /// Showcase: turn constant `k` by `d`.
+    Knob(usize, i32),
+    KnobReset,
+    // Manual
+    /// Open handbook section `n` at its first page.
+    ManualSection(u8),
+    /// Turn this many handbook pages.
+    ManualPage(i32),
+    /// Jump to page `n` of the current handbook section.
+    ManualAt(usize),
 }
 
 /// Persistent progress plus the autosave clock.
@@ -163,6 +220,10 @@ pub struct Play {
 #[derive(Resource, Default)]
 pub struct Session {
     pub task: usize,
+    /// The free bench: the task's machine without its goals or answers.
+    pub lab: bool,
+    /// An open problem (index into `content::open::opens()`) instead of `task`.
+    pub open: Option<usize>,
     pub work: Option<Solution>,
     pub undo: Vec<Solution>,
     pub hints: HintGate,
@@ -172,17 +233,22 @@ pub struct Session {
     pub report: Option<Report>,
     /// Build error shown instead of a report.
     pub error: Option<String>,
+    /// A run being graded off the main thread (big grids take a while).
+    pub grading: Option<bevy::tasks::Task<Result<Report, BuildError>>>,
     pub case: usize,
     pub play: Play,
     pub pick: Option<usize>,
     pub scroll: usize,
     /// Thread whose values the editor shows, after a run.
     pub probe: Option<usize>,
+    /// Output cell under the cursor, after a run.
+    pub hover: Option<usize>,
     /// Bumped whenever the report changes, so views know to repaint.
     pub generation: u64,
     /// The current report has been scored (once, when first revealed).
     pub judged: bool,
-    /// Stars gained by the last solve (for the results screen).
+    /// Stars gained by the last solve, or an open problem's new best (for
+    /// the results screen).
     pub improved: bool,
     pub unlocked: Vec<usize>,
     pub settings_return: Screen,
@@ -190,19 +256,38 @@ pub struct Session {
     pub page: usize,
     /// The chapter the hub shows; `None` follows ORI's next pick.
     pub chapter: Option<u8>,
+    /// The opening on screen: chapter and line.
+    pub opening: Option<(u8, usize)>,
+    /// ORI's menu is open on the hub.
+    pub ori_menu: bool,
     /// Showcase: the player-moved point and the running frame clock.
     pub point: [i32; 2],
     pub clock: f32,
+    pub show: crate::showcase::Show,
     /// The task's test cases (also inside a report, once there is one).
     pub cases: Vec<ooc_core::task::Case>,
     /// Typing a number into the selected constant replaces it on the first digit.
     pub typing: bool,
     /// Fault levels: the last pointed trace index, and whether it was right.
     pub pointed: Option<(usize, bool)>,
+    /// Seal spans (start, end pc) the Warp River shows expanded.
+    pub unfolded: Vec<(usize, usize)>,
+    /// The Blueprint | Microcode switch.
+    pub bp: crate::blueprint::Bp,
+    /// Handbook section and page.
+    pub manual: (u8, usize),
+    /// Free bench: the frame's kernels, input, screen and share state.
+    pub lab_state: crate::lab::LabState,
 }
 
 impl Session {
     pub fn task(&self) -> &'static Task {
+        if let Some(k) = self.open {
+            return &content::open::opens()[k].task;
+        }
+        if self.lab {
+            return ooc_core::lab::sized(self.task, self.lab_state.screen);
+        }
         &content::tasks()[self.task]
     }
 
@@ -226,9 +311,13 @@ impl Session {
     pub fn invalidate(&mut self) {
         self.report = None;
         self.error = None;
+        // Dropping the task cancels a run of work that is now stale.
+        self.grading = None;
         self.probe = None;
+        self.hover = None;
         self.judged = false;
         self.pointed = None;
+        self.lab_state.clear_run();
         self.generation += 1;
         self.play = Play {
             speed: self.play.speed,

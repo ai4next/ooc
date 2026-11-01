@@ -12,3 +12,6 @@ oo_base = { workspace = true }
 oo_kit = { workspace = true }
 ooc_core = { path = "../ooc_core" }
 serde_json = { workspace = true }
+# Free bench: picture import and share-code copy / paste.
+png = "0.18"
+arboard = { version = "3.7", default-features = false }

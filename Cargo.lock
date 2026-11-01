@@ -4209,10 +4209,12 @@ dependencies = [
 name = "ooc_app"
 version = "0.1.0"
 dependencies = [
+ "arboard",
  "bevy",
  "oo_base",
  "oo_kit",
  "ooc_core",
+ "png",
  "serde_json",
 ]
 

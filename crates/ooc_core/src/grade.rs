@@ -3,8 +3,9 @@
 use oo_base::{Evidence, Outcome};
 
 use crate::asm::{AsmError, assemble};
-use crate::graph::{GraphError, NodeKind};
+use crate::graph::{Graph, GraphError, NodeKind};
 use crate::isa::{OpKind, PREDS, Program, REGS};
+use crate::seal::Seals;
 use crate::task::{Case, Editor, Goal, Metric, Solution, Task};
 use crate::vm::{FrameRun, Machine, run_frame_with};
 
@@ -15,12 +16,14 @@ pub enum BuildError {
     /// The solution uses a part this level does not offer.
     LockedOp(OpKind),
     LockedNode(NodeKind),
-    /// Graph work submitted to a code task or vice versa.
+    /// Blueprint work submitted to a code task.
     WrongEditor,
     /// More instructions than this machine's program memory holds.
     TooLong(usize),
     /// More registers per thread than this machine gives (the cap).
     TooManyRegs(u8),
+    /// Microcode on a blueprint level that no blueprint can draw.
+    Blueprint(crate::graph::Unfit),
 }
 
 /// A solution turned into a runnable program.
@@ -32,9 +35,15 @@ pub struct Built {
 }
 
 pub fn build(task: &Task, sol: &Solution) -> Result<Built, BuildError> {
+    build_with(task, sol, &Seals::new())
+}
+
+/// [`build`] where `USE name` lines expand from `seals`. The expansion is
+/// checked like hand-written code: ops, length and registers.
+pub fn build_with(task: &Task, sol: &Solution, seals: &Seals) -> Result<Built, BuildError> {
     match (task.editor, sol) {
         (Editor::Code(ops), Solution::Code(src)) => {
-            let program = assemble(src).map_err(BuildError::Asm)?;
+            let program = crate::seal::assemble(src, seals).map_err(BuildError::Asm)?;
             if let Some(op) = program
                 .code
                 .iter()
@@ -71,8 +80,39 @@ pub fn build(task: &Task, sol: &Solution) -> Result<Built, BuildError> {
                 size: c.used,
             })
         }
+        (Editor::Graph(kinds), Solution::Code(src)) => {
+            let program = assemble(src).map_err(BuildError::Asm)?;
+            let g = blueprint_of(kinds, &program)?;
+            let room = task.profile.max_program();
+            if program.len() > room {
+                return Err(BuildError::TooLong(room));
+            }
+            // The player's own code runs; its size is the board it draws.
+            let size = g.compile().map_err(BuildError::Graph)?.used;
+            Ok(Built { program, size })
+        }
         _ => Err(BuildError::WrongEditor),
     }
+}
+
+/// The board a program draws on a blueprint level with parts `kinds`:
+/// only the matching microcode ops (see [`crate::graph::code_ops`]) and
+/// only parts the level offers.
+pub fn blueprint_of(kinds: &[NodeKind], program: &Program) -> Result<Graph, BuildError> {
+    let ops = crate::graph::code_ops(kinds);
+    if let Some(op) = program.code.iter().map(|i| i.kind()).find(|k| !ops.contains(k)) {
+        return Err(BuildError::LockedOp(op));
+    }
+    let g = crate::graph::decompile(&program.code).map_err(BuildError::Blueprint)?;
+    if let Some(n) = g
+        .nodes
+        .iter()
+        .map(|n| n.kind)
+        .find(|k| *k != NodeKind::Out && !kinds.contains(k))
+    {
+        return Err(BuildError::LockedNode(n));
+    }
+    Ok(g)
 }
 
 /// One test case, executed.
@@ -322,6 +362,11 @@ impl Report {
 pub fn grade(task: &Task, sol: &Solution) -> Result<Report, BuildError> {
     let built = build(task, sol)?;
     Ok(grade_built(task, built))
+}
+
+/// [`grade`] with the player's seals.
+pub fn grade_with(task: &Task, sol: &Solution, seals: &Seals) -> Result<Report, BuildError> {
+    Ok(grade_built(task, build_with(task, sol, seals)?))
 }
 
 pub fn grade_built(task: &Task, built: Built) -> Report {
@@ -604,6 +649,74 @@ pub fn first_out_of_order(prog: &Program, run: &CaseRun) -> Option<Evidence> {
     None
 }
 
+/// One half-warp's MMA, as the tensor view draws it: the tiles it read and
+/// the tile it wrote, row-major 4×4.
+#[derive(Clone, Debug, PartialEq)]
+pub struct MmaTile {
+    /// Trace index of the MMA.
+    pub step: usize,
+    pub warp: u16,
+    /// Which half of the warp (lanes 0–15 or 16–31).
+    pub half: u8,
+    /// FP16 inputs.
+    pub a: [f32; 16],
+    pub b: [f32; 16],
+    /// FP32 accumulator before and after.
+    pub c: [f32; 16],
+    pub d: [f32; 16],
+    /// Lanes of the half-warp that took part, bit per lane.
+    pub live: u16,
+}
+
+/// Replays `run`'s case up to the MMA at trace index `step` and reads the
+/// tiles of its first active half-warp. `None` if that step is not an MMA.
+pub fn mma_tile(task: &Task, program: &Program, run: &CaseRun, step: usize) -> Option<MmaTile> {
+    use crate::fp::{f_to_f32, h_to_f64};
+    use crate::isa::{Instr, LANES};
+    let st = run.run.trace.get(step)?;
+    let Some(&Instr::Mma { d, a, b, c }) = program.code.get(st.pc as usize) else {
+        return None;
+    };
+    let case = &run.case;
+    let mut out = run.init.clone();
+    out.resize(task.out_len, 0);
+    let flips = task.flips.map(|f| f(case)).unwrap_or_default();
+    let launch = task.launch_for(program, case);
+    let mut m = Machine::new(program, &case.rom, launch, task.profile, case.frame).with_flips(&flips);
+    let mut stats = Default::default();
+    for _ in 0..step {
+        m.step(&mut out, &mut stats)?;
+    }
+    let half = if st.mask & 0xFFFF != 0 { 0 } else { 1 };
+    let base = st.warp as usize * LANES + half * 16;
+    let live = (st.mask >> (half * 16)) as u16;
+    let read = |m: &Machine, r: u8, fp16: bool| {
+        std::array::from_fn(|l| {
+            let bits = m.regs.get(base + l).map_or(0, |regs| regs[r as usize]);
+            if live & (1 << l) == 0 {
+                0.0
+            } else if fp16 {
+                h_to_f64(bits) as f32
+            } else {
+                f_to_f32(bits)
+            }
+        })
+    };
+    let (ta, tb, tc) = (read(&m, a, true), read(&m, b, true), read(&m, c, false));
+    let issued = m.step(&mut out, &mut stats)?;
+    debug_assert_eq!((issued.warp, issued.pc), (st.warp, st.pc));
+    Some(MmaTile {
+        step,
+        warp: st.warp,
+        half: half as u8,
+        a: ta,
+        b: tb,
+        c: tc,
+        d: read(&m, d, false),
+        live,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -671,5 +784,28 @@ mod tests {
         let spin = "LOOP 64\nLOOP 64\nLOOP 64\nADD r0, r0, 1\nENDLOOP\nENDLOOP\nENDLOOP";
         let rep = grade(t, &Solution::Code(spin.into())).unwrap();
         assert_eq!(rep.verdict, Verdict::Timeout { case: 0 });
+    }
+
+    #[test]
+    fn mma_tile_reads_what_the_mma_multiplied() {
+        let t = task("four-by-four").unwrap();
+        let rep = grade(t, &t.reference.solution()).unwrap();
+        let run = &rep.runs[0];
+        let i = run
+            .run
+            .trace
+            .iter()
+            .position(|s| matches!(rep.program.code[s.pc as usize], crate::isa::Instr::Mma { .. }))
+            .unwrap();
+        let tile = mma_tile(t, &rep.program, run, i).unwrap();
+        assert_ne!(tile.live, 0);
+        for r in 0..4 {
+            for c in 0..4 {
+                let want: f32 = (0..4).map(|k| tile.a[r * 4 + k] * tile.b[k * 4 + c]).sum::<f32>()
+                    + tile.c[r * 4 + c];
+                assert!((tile.d[r * 4 + c] - want).abs() <= want.abs() * 1e-5 + 1e-3);
+            }
+        }
+        assert!(mma_tile(t, &rep.program, run, 0).is_none() || i == 0);
     }
 }

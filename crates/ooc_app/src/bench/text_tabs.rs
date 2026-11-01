@@ -82,7 +82,7 @@ pub(super) fn draw_listing(ui: &mut Ui, v: &View) {
     let s = v.s;
     let program = match (&s.report, s.work.as_ref()) {
         (Some(r), _) => Some(r.program.clone()),
-        (None, Some(sol)) => ooc_core::grade::build(s.task(), sol)
+        (None, Some(sol)) => ooc_core::grade::build_with(s.task(), sol, &v.game.save.seals)
             .ok()
             .map(|b| b.program),
         (None, None) => None,

@@ -6,6 +6,7 @@ use bevy::sprite::Anchor;
 use oo_kit::ui::{Cursor, Ui};
 use ooc_core::isa::{FB_LEN, LANES};
 use ooc_core::task::View as TaskView;
+use ooc_core::vm::Step;
 
 use crate::fb::{self, FbImages, RIVER_COLS};
 use crate::state::{Screen, Session, t};
@@ -72,7 +73,11 @@ pub fn river_input(cursor: Res<Cursor>, mut cx: Ctx) {
         return;
     }
     let col = (d.x / size.x * RIVER_COLS as f32) as usize;
-    let Some(i) = step_at_col(cx.s.play.step, col) else {
+    let at = match crate::seals::click(&mut cx, col) {
+        Some(folded) => folded,
+        None => step_at_col(cx.s.play.step, col),
+    };
+    let Some(i) = at else {
         return;
     };
     let len = crate::bench::trace_len(&cx.s);
@@ -108,7 +113,7 @@ pub struct RiverStat(pub u8);
 pub struct PcBar;
 
 /// The thread a cell of the output belongs to, if the task launched it.
-fn thread_of(s: &Session, cell: usize) -> Option<usize> {
+pub fn thread_of(s: &Session, cell: usize) -> Option<usize> {
     let threads = s.task().launch.threads;
     let th = match s.task().view {
         TaskView::Buffers => cell % FB_LEN,
@@ -117,22 +122,48 @@ fn thread_of(s: &Session, cell: usize) -> Option<usize> {
     (th < threads).then_some(th)
 }
 
-/// Clicking a cell probes its thread.
-pub fn probe_input(cursor: Res<Cursor>, mut cx: Ctx) {
-    if !cursor.pressed || cursor.over_button || cx.s.report.is_none() {
-        return;
-    }
-    let Some(p) = cursor.world else { return };
-    let view = cx.s.task().view;
-    let cell = if view == TaskView::Lanes {
+/// The output cell under `p`, if any.
+fn cell_under(s: &Session, p: Vec2) -> Option<usize> {
+    let view = s.task().view;
+    let d = display(view);
+    if view == TaskView::Lanes {
         lane_at(p)
     } else if view == TaskView::Cells {
-        let d = display(view);
-        fb::grid_at(p, d.out.0, d.out.1)
+        fb::grid_at(p, fb::grid_side(s.task()), d.out.0, d.out.1)
     } else {
-        let d = display(view);
-        fb::cell_at(p, d.out.0, d.out.1, d.wide)
-    };
+        fb::cell_at(p, fb::screen_w(s.task()), d.out.0, d.out.1, d.wide)
+    }
+}
+
+/// The step of the selected case's replay, up to the current one, that last
+/// wrote `cell`: its index and the step.
+pub fn last_write(s: &Session, cell: usize) -> Option<(usize, &Step)> {
+    let rep = s.report.as_ref()?;
+    let trace = &rep.runs.get(s.case)?.run.trace;
+    let upto = s.play.step.min(trace.len());
+    trace[..upto]
+        .iter()
+        .enumerate()
+        .rev()
+        .find(|(_, st)| st.writes.iter().any(|&(a, _)| a as usize == cell))
+}
+
+/// Hovering a cell names its thread and the step that wrote it; clicking
+/// pins the probe, whose values the editor shows.
+pub fn probe_input(cursor: Res<Cursor>, mut pinned: Local<Option<bool>>, mut cx: Ctx) {
+    if cx.s.report.is_none() {
+        return;
+    }
+    let cell = cursor.world.and_then(|p| cell_under(&cx.s, p));
+    // Screenshots set the hover by hand (`OOC_HOVER`); the cursor leaves it.
+    let pinned = *pinned.get_or_insert_with(|| std::env::var_os("OOC_HOVER").is_some());
+    if !pinned && cell != cx.s.hover {
+        cx.s.hover = cell;
+        cx.dirty();
+    }
+    if !cursor.pressed || cursor.over_button {
+        return;
+    }
     if let Some(th) = cell.and_then(|c| thread_of(&cx.s, c)) {
         cx.s.probe = if cx.s.probe == Some(th) {
             None
@@ -188,13 +219,21 @@ pub fn sync_output(
     let new_case = last.is_none_or(|l| l.0 != key.0);
     *last = Some(key);
     let buf = shown(&s);
-    let (out, target) = fbi.pair(s.task().view);
-    if let Some(mut img) = images.get_mut(out) {
-        fb::paint_values(&mut img, &buf);
-    }
+    let (out, target) = fbi.pair(s.task());
     let expect = expected(&s);
+    let shade = shade_for(&s, &expect);
+    let amber = fb::era(s.task()) == fb::Era::Amber && s.task().view != TaskView::Cells;
+    if let Some(mut img) = images.get_mut(out) {
+        fb::paint_values(&mut img, &buf, shade);
+        if amber {
+            fb::amber_tint(&mut img, 0.3);
+        }
+    }
     if new_case && let Some(mut img) = images.get_mut(target) {
-        fb::paint(&mut img, &expect);
+        fb::paint_shaded(&mut img, &expect, shade);
+        if amber {
+            fb::amber_tint(&mut img, 0.3);
+        }
     }
     for (lane, mut text, mut color) in &mut lanes {
         let v = buf.get(lane.0).copied().unwrap_or(0);
@@ -207,6 +246,14 @@ pub fn sync_output(
             _ => pal.text,
         };
     }
+}
+
+/// Data grids are shaded by the expectation's range so output and target agree.
+pub fn shade_for(s: &Session, expect: &[Option<i32>]) -> fb::Shade {
+    if s.task().view != TaskView::Cells {
+        return fb::Shade::Palette;
+    }
+    fb::Shade::of(expect.iter().flatten())
 }
 
 /// Paints the Warp River and moves the live readouts.
@@ -243,7 +290,9 @@ pub fn sync_markers(
         .then(|| crate::bench::clue_at(&s))
         .flatten()
         .map(|e| e.center() as usize);
-    if let Some(mut img) = images.get_mut(&fbi.river) {
+    if let Some(mut img) = images.get_mut(&fbi.river)
+        && !crate::seals::paint(&mut img, &s, mark)
+    {
         paint_river(&mut img, run.map(|(_, r)| &r.trace[..]), s.play.step, mark);
     }
     let latest = run.and_then(|(rep, r)| {
@@ -263,14 +312,17 @@ pub fn sync_markers(
             (0, None) => t(l, "Not run yet", "尚未运行").into(),
             (_, _) => match latest {
                 Some((w, pc, Some(ins))) => {
-                    format!("warp {w} · {} {} · {ins}", t(l, "line", "行"), pc + 1)
+                    let spans = run.map_or(&[][..], |(rep, _)| &rep.program.seals[..]);
+                    let at = crate::seals::line_text(spans, pc);
+                    format!("warp {w} · {} {at} · {ins}", t(l, "line", "行"))
                 }
                 _ => String::new(),
             },
         };
     }
     for (mut tf, mut vis) in &mut bar {
-        match latest.and_then(|(_, pc, _)| code_ed::line_y(&s, pc)) {
+        let line = |pc| run.map_or(pc, |(rep, _)| ooc_core::seal::line_of(&rep.program.seals, pc));
+        match latest.and_then(|(_, pc, _)| code_ed::line_y(&s, line(pc))) {
             Some(y) => {
                 tf.translation.y = y;
                 *vis = Visibility::Inherited;
@@ -295,7 +347,7 @@ pub fn river_colour(c: [u8; 4]) -> Color {
 
 /// One column per issued instruction (latest at the right), one row per lane.
 /// Full warps glow teal; divergent ones show their active lanes in amber.
-fn paint_river(
+pub(crate) fn paint_river(
     img: &mut Image,
     trace: Option<&[ooc_core::vm::Step]>,
     step: usize,
@@ -407,14 +459,31 @@ pub fn draw_display(ui: &mut Ui, v: &View) {
         return;
     }
     let d = display(view);
-    let (img, timg) = v.fb.pair(view);
+    let (img, timg) = v.fb.pair(s.task());
+    let side = fb::grid_side(s.task());
     screen_frame(ui, d.out.0, d.out.1, img.clone(), pal.line_bright);
-    screen_frame(ui, d.target.0, d.target.1, timg.clone(), pal.line);
+    let crt = view != TaskView::Cells;
+    if crt {
+        fb::crt(ui, v.fb, d.out.0, d.out.1, fb::era(s.task()));
+    }
+    // The free bench has no target to show.
+    if !s.lab {
+        screen_frame(ui, d.target.0, d.target.1, timg.clone(), pal.line);
+        if crt {
+            fb::crt(ui, v.fb, d.target.0, d.target.1, fb::era(s.task()));
+        }
+    } else {
+        crate::lab::panel::draw_preview(ui, v, d.target.0, d.target.1);
+    }
     let out_top = d.out.0.y + d.out.1.y / 2.0;
     let label = if d.wide {
         t(l, "OUTPUT · FRONT | BACK", "输出 · 前缓冲 | 后缓冲")
     } else if view == TaskView::Cells {
-        t(l, "OUTPUT · 32 CELLS PER ROW", "输出 · 每行 32 格")
+        match side {
+            32 => t(l, "OUTPUT · 32 CELLS PER ROW", "输出 · 每行 32 格"),
+            64 => t(l, "OUTPUT · 64 CELLS PER ROW", "输出 · 每行 64 格"),
+            _ => t(l, "OUTPUT · 128 CELLS PER ROW", "输出 · 每行 128 格"),
+        }
     } else {
         t(l, "OUTPUT", "输出")
     };
@@ -428,35 +497,50 @@ pub fn draw_display(ui: &mut Ui, v: &View) {
         d.target.0.x - d.target.1.x / 2.0,
         d.target.0.y + d.target.1.y / 2.0 + 10.0,
     );
-    ui.caption(
-        t(l, "TARGET", "目标"),
-        tl,
-        pal.text_faint,
-        Anchor::CENTER_LEFT,
-    );
+    if !s.lab {
+        ui.caption(
+            t(l, "TARGET", "目标"),
+            tl,
+            pal.text_faint,
+            Anchor::CENTER_LEFT,
+        );
+    }
     let place = |c: usize| {
         if view == TaskView::Cells {
             (
-                fb::grid_pos(c, d.out.0, d.out.1),
-                d.out.1.x / fb::GRID_W as f32,
+                fb::grid_pos(c, side, d.out.0, d.out.1),
+                d.out.1.x / side as f32,
             )
         } else {
+            let w = fb::screen_w(s.task());
             (
-                fb::cell_pos(c, d.out.0, d.out.1, d.wide),
-                d.out.1.x / if d.wide { 33.0 } else { 16.0 },
+                fb::cell_pos(c, w, d.out.0, d.out.1, d.wide),
+                d.out.1.x / if d.wide { 33.0 } else { w as f32 },
             )
         }
     };
     if s.play.revealed {
         for &c in wrong_cells(s).iter().take(96) {
             let (p, pitch) = place(c);
-            ui.rect(p, Vec2::splat(pitch * 0.36), pal.bad, 7.5);
+            ui.rect(p, Vec2::splat((pitch * 0.36).max(2.0)), pal.bad, 7.5);
+        }
+    }
+    if let Some(c) = s.hover.filter(|&c| Some(c) != s.probe && view != TaskView::Lanes) {
+        let (p, pitch) = place(c);
+        let (e, c) = (pitch.max(4.0) / 2.0 + 1.0, pal.text.with_alpha(0.7));
+        for (off, size) in [
+            (Vec2::new(0.0, e), Vec2::new(2.0 * e, 1.0)),
+            (Vec2::new(0.0, -e), Vec2::new(2.0 * e, 1.0)),
+            (Vec2::new(e, 0.0), Vec2::new(1.0, 2.0 * e)),
+            (Vec2::new(-e, 0.0), Vec2::new(1.0, 2.0 * e)),
+        ] {
+            ui.rect(p + off, size, c, 7.65);
         }
     }
     if let Some(th) = s.probe {
         let (p, pitch) = place(th);
-        ui.glow(p, pitch * 3.0, pal.secondary.with_alpha(0.5), 7.6);
-        ui.chip(p, Vec2::splat(pitch * 0.5), pal.secondary, 7.7);
+        ui.glow(p, (pitch * 3.0).max(12.0), pal.secondary.with_alpha(0.5), 7.6);
+        ui.chip(p, Vec2::splat((pitch * 0.5).max(4.0)), pal.secondary, 7.7);
     }
 }
 

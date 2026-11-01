@@ -157,24 +157,24 @@ fn winding(t: [Tri; 2]) -> Case {
 
 const WINDINGS: [[Tri; 2]; 5] = [
     [
-        ([(2, 2), (30, 6), (8, 30)], 6),
-        ([(10, 6), (14, 28), (26, 12)], 13),
+        ([(4, 4), (60, 12), (16, 60)], 6),
+        ([(20, 12), (28, 56), (52, 24)], 13),
     ],
     [
-        ([(2, 4), (20, 2), (10, 26)], 5),
-        ([(12, 10), (30, 14), (16, 30)], 11),
+        ([(4, 8), (40, 4), (20, 52)], 5),
+        ([(24, 20), (60, 28), (32, 60)], 11),
     ],
     [
-        ([(4, 4), (10, 26), (24, 8)], 7),
-        ([(30, 30), (26, 4), (8, 20)], 12),
+        ([(8, 8), (20, 52), (48, 16)], 7),
+        ([(60, 60), (52, 8), (16, 40)], 12),
     ],
     [
-        ([(2, 2), (30, 4), (14, 30)], 9),
-        ([(4, 4), (16, 16), (28, 28)], 14),
+        ([(4, 4), (60, 8), (28, 60)], 9),
+        ([(8, 8), (32, 32), (56, 56)], 14),
     ],
     [
-        ([(6, 6), (14, 30), (28, 10)], 3),
-        ([(10, 10), (30, 16), (12, 28)], 10),
+        ([(12, 12), (28, 60), (56, 20)], 3),
+        ([(20, 20), (60, 32), (24, 56)], 10),
     ],
 ];
 
@@ -203,7 +203,7 @@ fn the_winding() -> Task {
         cases: || WINDINGS[..3].iter().map(|t| winding(*t)).collect(),
         hidden: || WINDINGS[3..].iter().map(|t| winding(*t)).collect(),
         expect: facing,
-        goals: [Goal::new(Metric::Cycles, 288), Goal::new(Metric::Size, 32)],
+        goals: [Goal::new(Metric::Cycles, 1152), Goal::new(Metric::Size, 32)],
         starter: Source::Code(
             "; draw whatever covers the pixel, front or back | 只要盖住像素就画，不分正反\nEDGE r0, [0]\nEDGE r1, [3]\nEDGE r2, [6]\nEDGE r4, [16]\nEDGE r5, [19]\nEDGE r6, [22]\nLD r3, [9]\nLD r7, [25]\nMIN r0, r0, r1\nMIN r4, r4, r5\nMIN r0, r0, r2\nMIN r4, r4, r6\nSETP.GT p0, r0, 0\nSETP.GT p1, r4, 0\nSEL r3, p0, r3, 0\nNOP\nSEL r3, p1, r7, r3\nNOP\nPIX r3\n",
         ),
@@ -423,22 +423,22 @@ fn barycentric() -> Task {
         ),
         cases: || {
             vec![
-                shaded([(4, 4), (28, 8), (10, 28)], [3, 9, 14]),
-                shaded([(8, 2), (30, 16), (2, 26)], [12, 2, 7]),
-                shaded([(2, 2), (30, 4), (14, 30)], [15, 6, 1]),
+                shaded([(8, 8), (56, 16), (20, 56)], [3, 9, 14]),
+                shaded([(16, 4), (60, 32), (4, 52)], [12, 2, 7]),
+                shaded([(4, 4), (60, 8), (28, 60)], [15, 6, 1]),
             ]
         },
         hidden: || {
             vec![
-                shaded([(12, 2), (20, 6), (14, 30)], [2, 3, 14]),
-                shaded([(6, 4), (30, 12), (10, 30)], [1, 15, 8]),
+                shaded([(24, 4), (40, 12), (28, 60)], [2, 3, 14]),
+                shaded([(12, 8), (60, 24), (20, 60)], [1, 15, 8]),
             ]
         },
         expect: blended,
         tolerance: 1,
-        goals: [Goal::new(Metric::Cycles, 200), Goal::new(Metric::Size, 19)],
+        goals: [Goal::new(Metric::Cycles, 800), Goal::new(Metric::Size, 19)],
         starter: Source::Code(
-            "; the old scanline fill: c0 on the left to c1 on the right | 旧扫描线填充：从左边的 c0 渐变到右边的 c1\nEDGE r0, [0]\nEDGE r1, [3]\nEDGE r2, [6]\nLD r4, [9]\nLD r5, [10]\nMIN r3, r0, r1\nNOP\nSUB r5, r5, r4\nMIN r3, r3, r2\nMUL r5, r5, x\nSETP.GT p0, r3, 0\nNOP\nNOP\nSHR r5, r5, 4\nNOP\nADD r5, r5, r4\nNOP\nSEL r5, p0, r5, 0\nNOP\nPIX r5\n",
+            "; the old scanline fill: c0 on the left to c1 on the right | 旧扫描线填充：从左边的 c0 渐变到右边的 c1\nEDGE r0, [0]\nEDGE r1, [3]\nEDGE r2, [6]\nLD r4, [9]\nLD r5, [10]\nMIN r3, r0, r1\nNOP\nSUB r5, r5, r4\nMIN r3, r3, r2\nMUL r5, r5, x\nSETP.GT p0, r3, 0\nNOP\nNOP\nSHR r5, r5, 5\nNOP\nADD r5, r5, r4\nNOP\nSEL r5, p0, r5, 0\nNOP\nPIX r5\n",
         ),
         reference: Source::Code(
             "LD r7, [12]\nEDGE r0, [0]\nEDGE r1, [3]\nEDGE r2, [6]\nLD r4, [9]\nLD r5, [10]\nMUL r8, r0, r7\nMUL r9, r1, r7\nMUL r10, r2, r7\nLD r6, [11]\nMIN r3, r0, r1\nNOP\nLERP r11, r8, r4\nMIN r3, r3, r2\nNOP\nSETP.GT p0, r3, 0\nSEL r11, p0, r11, 0\nNOP\nPIX r11\n",
@@ -537,25 +537,25 @@ fn persp_correct() -> Task {
         ),
         cases: || {
             vec![
-                tilted([(4, 4), (28, 8), (10, 28)], [3, 9, 14], [16, 16, 16]),
-                tilted([(8, 2), (30, 16), (2, 26)], [12, 2, 7], [16, 16, 64]),
-                tilted([(2, 2), (30, 4), (14, 30)], [15, 6, 1], [16, 32, 128]),
+                tilted([(8, 8), (56, 16), (20, 56)], [3, 9, 14], [16, 16, 16]),
+                tilted([(16, 4), (60, 32), (4, 52)], [12, 2, 7], [16, 16, 64]),
+                tilted([(4, 4), (60, 8), (28, 60)], [15, 6, 1], [16, 32, 128]),
             ]
         },
         hidden: || {
             vec![
-                tilted([(6, 4), (30, 12), (10, 30)], [1, 15, 8], [16, 128, 128]),
-                tilted([(2, 6), (26, 2), (18, 30)], [4, 14, 15], [32, 32, 128]),
+                tilted([(12, 8), (60, 24), (20, 60)], [1, 15, 8], [16, 128, 128]),
+                tilted([(4, 12), (52, 4), (36, 60)], [4, 14, 15], [32, 32, 128]),
             ]
         },
         expect: foreshortened,
         tolerance: 1,
-        goals: [Goal::new(Metric::Cycles, 304), Goal::new(Metric::Size, 35)],
+        goals: [Goal::new(Metric::Cycles, 1216), Goal::new(Metric::Size, 35)],
         starter: Source::Code(
             "; the plain barycentric blend from the last level | 上一关的重心混合\nEDGE r0, [0]\nEDGE r1, [3]\nEDGE r2, [6]\nLD r4, [9]\nLD r5, [10]\nLD r6, [11]\nADD r7, r0, r1\nMIN r3, r0, r1\nADD r7, r7, r2\nMIN r3, r3, r2\nRCP r7, r7\nSETP.GT p0, r3, 0\nNOP\nNOP\nMUL r8, r0, r7\nMUL r9, r1, r7\nMUL r10, r2, r7\nNOP\nNOP\nNOP\nLERP r11, r8, r4\nNOP\nNOP\nNOP\nSEL r11, p0, r11, 0\nNOP\nPIX r11\n",
         ),
         reference: Source::Code(
-            "LD r4, [12]\nLD r5, [13]\nLD r6, [14]\nRCP r4, r4\nRCP r5, r5\nRCP r6, r6\nEDGE r0, [0]\nEDGE r1, [3]\nEDGE r2, [6]\nLD r8, [9]\nLD r9, [10]\nLD r10, [11]\nSHL r4, r4, 4\nSHL r5, r5, 4\nSHL r6, r6, 4\nMUL r8, r8, r4\nLERP r7, r0, r4\nMUL r9, r9, r5\nMUL r10, r10, r6\nMIN r3, r0, r1\nRCP r7, r7\nMIN r3, r3, r2\nLERP r11, r0, r8\nSETP.GT p0, r3, 0\nNOP\nNOP\nMUL r11, r11, r7\nNOP\nNOP\nNOP\nSHR r11, r11, 16\nNOP\nSEL r11, p0, r11, 0\nNOP\nPIX r11\n",
+            "LD r4, [12]\nLD r5, [13]\nLD r6, [14]\nRCP r4, r4\nRCP r5, r5\nRCP r6, r6\nEDGE r0, [0]\nEDGE r1, [3]\nEDGE r2, [6]\nLD r8, [9]\nLD r9, [10]\nLD r10, [11]\nSHL r4, r4, 2\nSHL r5, r5, 2\nSHL r6, r6, 2\nMUL r8, r8, r4\nLERP r7, r0, r4\nMUL r9, r9, r5\nMUL r10, r10, r6\nMIN r3, r0, r1\nRCP r7, r7\nMIN r3, r3, r2\nLERP r11, r0, r8\nSETP.GT p0, r3, 0\nNOP\nNOP\nMUL r11, r11, r7\nNOP\nNOP\nNOP\nSHR r11, r11, 16\nNOP\nSEL r11, p0, r11, 0\nNOP\nPIX r11\n",
         ),
         predict: Predict {
             question: Tr::new(
@@ -583,8 +583,8 @@ fn persp_correct() -> Task {
                 "每个顶点只取一次 q_i = RCP(w_i)。然后两个和都是 LERP，一边是原始的边：分母 Σ e_i·q_i，分子 Σ e_i·(c_i·q_i)。再对分母取一次 RCP、做一次 MUL，除法就完成了。",
             ),
             Tr::new(
-                "RCP gives 65536 / w, so shift it left by 4 before use: that keeps the denominator large enough to survive the final reciprocal. The numerator and the denominator LERPs both need three consecutive registers on each side; start the loads and reciprocals first, because they take longest.",
-                "RCP 给出 65536 / w，用之前先左移 4 位：这样分母足够大，经得起最后一次倒数。分子和分母的 LERP 两边都要三个连续寄存器；先发出 LD 和 RCP，因为它们最慢。",
+                "RCP gives 65536 / w, so shift it left by 2 before use: that keeps the denominator large enough to survive the final reciprocal. The numerator and the denominator LERPs both need three consecutive registers on each side; start the loads and reciprocals first, because they take longest.",
+                "RCP 给出 65536 / w，用之前先左移 2 位：这样分母足够大，经得起最后一次倒数。分子和分母的 LERP 两边都要三个连续寄存器；先发出 LD 和 RCP，因为它们最慢。",
             ),
         ],
         insight: Insight {

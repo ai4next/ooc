@@ -18,6 +18,10 @@ pub const PREDS: u8 = 4;
 pub const FB_W: i32 = 16;
 pub const FB_H: i32 = 16;
 pub const FB_LEN: usize = (FB_W * FB_H) as usize;
+/// Prism onwards: a 32×32 screen, one thread per pixel (32 warps).
+pub const WIDE_W: i32 = 32;
+pub const WIDE_H: i32 = 32;
+pub const WIDE_LEN: usize = (WIDE_W * WIDE_H) as usize;
 pub const MAX_LOOP: i32 = 64;
 pub const MAX_PROGRAM: usize = 40;
 /// Atlas has room for longer kernels.
@@ -619,61 +623,59 @@ impl Instr {
 
     /// The registers this instruction reads.
     pub fn reads(&self) -> impl Iterator<Item = u8> + use<> {
-        let mut regs: Vec<u8> = Vec::new();
-        let srcs = match *self {
+        // At most six registers (LERP); a fixed buffer keeps the scheduler's
+        // hot path free of allocation.
+        let mut regs = [0u8; 6];
+        let mut n = 0;
+        let mut push = |r: u8| {
+            regs[n] = r;
+            n += 1;
+        };
+        let reg = |s: Src| match s {
+            Src::Reg(r) => Some(r),
+            _ => None,
+        };
+        match *self {
             Instr::Mov { a, .. }
             | Instr::Pix { v: a }
             | Instr::Rcp { a, .. }
-            | Instr::Cvt { a, .. } => [Some(a), None],
-            Instr::Alu { a, b, .. } | Instr::SetP { a, b, .. } | Instr::Sel { a, b, .. } => {
-                [Some(a), Some(b)]
+            | Instr::Cvt { a, .. }
+            | Instr::Ld { addr: a, .. }
+            | Instr::Edge { addr: a, .. }
+            | Instr::Ldo { addr: a, .. }
+            | Instr::Lds { addr: a, .. }
+            | Instr::Ldl { addr: a, .. } => reg(a).into_iter().for_each(&mut push),
+            Instr::Alu { a, b, .. }
+            | Instr::SetP { a, b, .. }
+            | Instr::Sel { a, b, .. }
+            | Instr::St { addr: a, v: b }
+            | Instr::Sts { addr: a, v: b }
+            | Instr::Stl { addr: a, v: b }
+            | Instr::Atom { addr: a, v: b, .. }
+            | Instr::Shfl { a, lane: b, .. } => {
+                [a, b].into_iter().filter_map(reg).for_each(&mut push)
             }
-            Instr::Ld { addr, .. }
-            | Instr::Edge { addr, .. }
-            | Instr::Ldo { addr, .. }
-            | Instr::Lds { addr, .. }
-            | Instr::Ldl { addr, .. } => [Some(addr), None],
-            Instr::St { addr, v }
-            | Instr::Sts { addr, v }
-            | Instr::Stl { addr, v }
-            | Instr::Atom { addr, v, .. } => [Some(addr), Some(v)],
             Instr::Send {
                 peer: dst,
                 buf: src,
-                n,
+                n: len,
             }
             | Instr::Recv {
                 peer: dst,
                 buf: src,
-                n,
+                n: len,
             }
-            | Instr::Dma { dst, src, n } => {
-                regs.extend([dst, src, n].into_iter().filter_map(|s| match s {
-                    Src::Reg(r) => Some(r),
-                    _ => None,
-                }));
-                [None, None]
+            | Instr::Dma { dst, src, n: len } => {
+                [dst, src, len].into_iter().filter_map(reg).for_each(&mut push)
             }
-            Instr::Shfl { a, lane, .. } => [Some(a), Some(lane)],
-            Instr::Dot { a, b, .. } => {
-                regs.extend([a, a + 1, b, b + 1]);
-                [None, None]
-            }
+            Instr::Dot { a, b, .. } => [a, a + 1, b, b + 1].into_iter().for_each(&mut push),
             Instr::Lerp { a, b, .. } => {
-                regs.extend([a, a + 1, a + 2, b, b + 1, b + 2]);
-                [None, None]
+                [a, a + 1, a + 2, b, b + 1, b + 2].into_iter().for_each(&mut push)
             }
-            Instr::Mma { a, b, c, .. } => {
-                regs.extend([a, b, c]);
-                [None, None]
-            }
-            _ => [None, None],
-        };
-        regs.extend(srcs.into_iter().flatten().filter_map(|s| match s {
-            Src::Reg(r) => Some(r),
-            _ => None,
-        }));
-        regs.into_iter()
+            Instr::Mma { a, b, c, .. } => [a, b, c].into_iter().for_each(&mut push),
+            _ => {}
+        }
+        regs.into_iter().take(n)
     }
 
     /// Depth change for indentation: openers +1, closers -1, ELSE dedents itself.
@@ -919,6 +921,8 @@ pub struct Program {
     pub smem: Option<u16>,
     /// `.block N`: threads per block the player chose (Atlas).
     pub block: Option<u16>,
+    /// Sealed blocks pasted in by `USE name`, in program order.
+    pub seals: Vec<crate::seal::Span>,
 }
 
 fn regs_ok(i: &Instr) -> bool {
@@ -1028,6 +1032,7 @@ impl Program {
             warps: None,
             smem: None,
             block: None,
+            seals: Vec::new(),
         })
     }
 

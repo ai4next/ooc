@@ -27,6 +27,8 @@ pub struct Launch {
 
 impl Launch {
     pub const SCREEN: Launch = Launch::flat(FB_LEN);
+    /// One thread per pixel of a 32×32 screen.
+    pub const WIDE: Launch = Launch::flat(WIDE_LEN);
     pub const ONE_WARP: Launch = Launch::flat(LANES);
 
     /// One block holding every thread.
@@ -96,6 +98,8 @@ pub struct Profile {
     pub tensor: bool,
     /// Origin: SEND / RECV over a ring of links between the four SMs.
     pub link: Option<Link>,
+    /// Screen width in pixels: `x = tid % fb_w`, `y = tid / fb_w`.
+    pub fb_w: i32,
 }
 
 /// One direction of a link between neighbouring SMs.
@@ -121,13 +125,13 @@ pub const REG_FILE: usize = 256;
 /// Cycles between one block leaving an SM and the next one starting.
 const BLOCK_GAP: u32 = 6;
 /// Cycles a grid-wide barrier takes to release.
-const GSYNC_COST: u32 = 12;
+pub const GSYNC_COST: u32 = 12;
 /// Shared-memory words one SM can hand out to blocks that declare `.smem`.
 pub const SM_SMEM: usize = SMEM_WORDS;
 /// Words of private local memory per thread (where spilled values go).
 pub const LOCAL_WORDS: usize = 64;
 /// Cycles for a local-memory read to come back.
-const LOCAL_LAT: u32 = 80;
+pub const LOCAL_LAT: u32 = 80;
 /// Cycles a tensor-core MMA takes to write its tile back.
 pub const MMA_LAT: u32 = 8;
 
@@ -140,6 +144,7 @@ impl Profile {
         weak: false,
         tensor: false,
         link: None,
+        fb_w: FB_W,
     };
     pub const PRISM: Profile = Profile {
         latency: 3,
@@ -149,6 +154,7 @@ impl Profile {
         weak: false,
         tensor: false,
         link: None,
+        fb_w: WIDE_W,
     };
     pub const PRISM_UNITS: Profile = Profile {
         latency: 3,
@@ -158,6 +164,7 @@ impl Profile {
         weak: false,
         tensor: false,
         link: None,
+        fb_w: WIDE_W,
     };
     pub const VAULT: Profile = Profile {
         latency: 1,
@@ -167,6 +174,7 @@ impl Profile {
         weak: false,
         tensor: false,
         link: None,
+        fb_w: WIDE_W,
     };
     pub const ATLAS: Profile = Profile {
         latency: 1,
@@ -176,6 +184,7 @@ impl Profile {
         weak: false,
         tensor: false,
         link: None,
+        fb_w: WIDE_W,
     };
     pub const ATLAS_WEAK: Profile = Profile {
         weak: true,
@@ -580,6 +589,14 @@ pub struct FrameRun {
     pub analysis: Analysis,
 }
 
+impl FrameRun {
+    /// Share of lane slots doing useful work across every SM, 0..=1.
+    pub fn utilization(&self) -> f32 {
+        let sms = self.analysis.sms.len().max(1) as f32;
+        (self.stats.utilization() / sms).min(1.0)
+    }
+}
+
 /// Issued instructions after which a kernel is declared runaway.
 pub const WATCHDOG: u32 = 40_000;
 /// The same on Atlas, where a launch has far more warps.
@@ -637,6 +654,12 @@ pub struct Machine<'a> {
     sms: Vec<Sm>,
     /// Warps one SM may hold at once.
     cap: usize,
+    /// Resident warps that have not finished, in index order: the only ones
+    /// the scheduler need look at (a big grid holds thousands of warps).
+    running: Vec<usize>,
+    /// Per instruction: the registers it reads and writes, which the
+    /// scoreboard waits on (worked out once, not per scheduling pass).
+    deps: Vec<([u8; 7], u8)>,
     next: usize,
     /// Cycle the instruction being executed issued.
     now: u32,
@@ -646,8 +669,9 @@ pub struct Machine<'a> {
     sb: Vec<[u32; REGS as usize]>,
     /// Whether the register is waiting on a load or an atomic.
     sb_mem: Vec<[bool; REGS as usize]>,
-    /// Atlas: block that last wrote each output cell since the last GSYNC.
-    written: std::collections::HashMap<usize, usize>,
+    /// Atlas: block that last wrote each output cell since the last GSYNC,
+    /// plus one (0: not written).
+    written: Vec<u32>,
     live: usize,
     local: Vec<[i32; LOCAL_WORDS]>,
     dmas: Vec<DmaJob>,
@@ -758,10 +782,23 @@ impl<'a> Machine<'a> {
             queue: (0..nblocks).collect(),
             sms,
             cap,
+            running: Vec::new(),
+            deps: prog
+                .code
+                .iter()
+                .map(|ins| {
+                    let mut d = ([0u8; 7], 0u8);
+                    for r in ins.reads().chain(ins.dest()) {
+                        d.0[d.1 as usize] = r;
+                        d.1 += 1;
+                    }
+                    d
+                })
+                .collect(),
             next: 0,
             now: 0,
             issued: 0,
-            written: Default::default(),
+            written: Vec::new(),
             local: if prog
                 .code
                 .iter()
@@ -828,6 +865,10 @@ impl<'a> Machine<'a> {
                 let local = first + k - b * wpb;
                 let wp = &mut self.warps[first + k];
                 wp.resident = true;
+                if !wp.done {
+                    let at = self.running.partition_point(|&r| r < first + k);
+                    self.running.insert(at, first + k);
+                }
                 wp.sm = s;
                 wp.slot = slot;
                 if self.profile.vault {
@@ -887,8 +928,8 @@ impl<'a> Machine<'a> {
         let tin = t % l.block.max(1);
         match s {
             Special::Tid => t as i32,
-            Special::X => t as i32 % FB_W,
-            Special::Y => t as i32 / FB_W,
+            Special::X => t as i32 % self.profile.fb_w,
+            Special::Y => t as i32 / self.profile.fb_w,
             Special::Lane => (t % LANES) as i32,
             Special::Warp => (t / LANES) as i32,
             Special::Frame => self.frame,
@@ -962,13 +1003,39 @@ impl<'a> Machine<'a> {
         self.warps[w].pending = keep;
     }
 
-    fn lanes(&self, w: usize, mask: u32) -> impl Iterator<Item = usize> + use<> {
-        let base = w * LANES;
-        (0..LANES)
-            .filter(move |l| mask & (1 << l) != 0)
-            .map(move |l| base + l)
+    fn lanes(&self, w: usize, mask: u32) -> Lanes {
+        Lanes {
+            base: w * LANES,
+            mask,
+        }
     }
 }
+
+/// The threads of a warp's active lanes, lowest lane first.
+struct Lanes {
+    base: usize,
+    mask: u32,
+}
+
+impl Iterator for Lanes {
+    type Item = usize;
+
+    fn next(&mut self) -> Option<usize> {
+        if self.mask == 0 {
+            return None;
+        }
+        let l = self.mask.trailing_zeros() as usize;
+        self.mask &= self.mask - 1;
+        Some(self.base + l)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let n = self.mask.count_ones() as usize;
+        (n, Some(n))
+    }
+}
+
+impl ExactSizeIterator for Lanes {}
 
 impl Machine<'_> {
     /// Issues one instruction from the next ready warp. Returns `None` when
@@ -1020,7 +1087,9 @@ impl Machine<'_> {
         let (mut inf, mut sat, mut rmax) = (false, false, -1i32);
         let mut lost = false;
         let mut next_pc = pc + 1;
-        let lanes: Vec<usize> = self.lanes(w, mask).collect();
+        let mut lane_buf = [0usize; LANES];
+        let n_lanes = self.lanes(w, mask).zip(&mut lane_buf).map(|(t, b)| *b = t).count();
+        let lanes = &lane_buf[..n_lanes];
         stats.cycles = stats.cycles.max(issue + 1);
         stats.lane_ops += mask.count_ones();
         match ins {
@@ -1052,7 +1121,7 @@ impl Machine<'_> {
             }
             Instr::Cvt { op, d, a } => {
                 let mut vals = Vec::new();
-                for &t in &lanes {
+                for &t in lanes {
                     let (v, fl) = op.apply(self.val(a, t));
                     match fl {
                         Flag::Inf(x) => inf |= x,
@@ -1095,7 +1164,7 @@ impl Machine<'_> {
             Instr::Dot { d, a, b } => {
                 let (a, b) = (a as usize, b as usize);
                 let mut vals = Vec::new();
-                for &t in &lanes {
+                for &t in lanes {
                     let r = &self.regs[t];
                     let wide = r[a] as i64 * r[b] as i64 + r[a + 1] as i64 * r[b + 1] as i64;
                     overflow |= i32::try_from(wide).is_err();
@@ -1106,7 +1175,7 @@ impl Machine<'_> {
             Instr::Lerp { d, a, b } => {
                 let (a, b) = (a as usize, b as usize);
                 let mut vals = Vec::new();
-                for &t in &lanes {
+                for &t in lanes {
                     let r = &self.regs[t];
                     let wide: i64 = (0..3).map(|k| r[a + k] as i64 * r[b + k] as i64).sum();
                     overflow |= i32::try_from(wide).is_err();
@@ -1126,7 +1195,7 @@ impl Machine<'_> {
                 self.write(w, d, vals);
             }
             Instr::SetP { cmp, p, a, b } => {
-                for &t in &lanes {
+                for &t in lanes {
                     self.preds[t][p as usize] = cmp.test(self.val(a, t), self.val(b, t));
                 }
             }
@@ -1197,8 +1266,8 @@ impl Machine<'_> {
                 if from_out && self.profile.atlas {
                     race_r = hit.iter().any(|&i| {
                         self.written
-                            .get(&(i as usize))
-                            .is_some_and(|&o| o != block_ix)
+                            .get(i as usize)
+                            .is_some_and(|&o| o != 0 && o as usize != block_ix + 1)
                     });
                 }
             }
@@ -1233,7 +1302,7 @@ impl Machine<'_> {
             }
             Instr::Sts { addr, v } => {
                 let mut ok = Vec::new();
-                for &t in &lanes {
+                for &t in lanes {
                     let a = self.val(addr, t);
                     if let Some(i) = self.in_smem(a) {
                         let x = self.val(v, t);
@@ -1286,7 +1355,7 @@ impl Machine<'_> {
                 spill = true;
             }
             Instr::Stl { addr, v } => {
-                for &t in &lanes {
+                for &t in lanes {
                     let (a, x) = (self.val(addr, t), self.val(v, t));
                     match usize::try_from(a).ok().filter(|&a| a < LOCAL_WORDS) {
                         Some(a) => self.local[t][a] = x,
@@ -1393,7 +1462,7 @@ impl Machine<'_> {
             Instr::Atom { d, addr, v, shared } => {
                 let mut vals = Vec::new();
                 let mut at = Vec::new();
-                for &t in &lanes {
+                for &t in lanes {
                     let a = self.val(addr, t);
                     let add = self.val(v, t);
                     let cell = if shared {
@@ -1431,14 +1500,14 @@ impl Machine<'_> {
                 self.arrives(w, d, ready);
             }
             Instr::St { addr, v } => {
-                for &t in &lanes {
+                for &t in lanes {
                     let a = self.val(addr, t);
                     store(out, a, self.val(v, t), &mut writes, stats);
                 }
             }
             Instr::Pix { v } => {
-                for &t in &lanes {
-                    let a = self.special(Special::Y, t) * FB_W + self.special(Special::X, t);
+                for &t in lanes {
+                    let a = self.special(Special::Y, t) * self.profile.fb_w + self.special(Special::X, t);
                     store(out, a, self.val(v, t), &mut writes, stats);
                 }
             }
@@ -1462,7 +1531,7 @@ impl Machine<'_> {
             Instr::Vote { all, p, q } => {
                 let hits = lanes.iter().filter(|&&t| self.preds[t][q as usize]).count();
                 let r = if all { hits == lanes.len() } else { hits > 0 };
-                for &t in &lanes {
+                for &t in lanes {
                     self.preds[t][p as usize] = r;
                 }
             }
@@ -1492,7 +1561,7 @@ impl Machine<'_> {
             }
             Instr::If { p } => {
                 let mut taken = 0u32;
-                for &t in &lanes {
+                for &t in lanes {
                     if self.preds[t][p as usize] {
                         taken |= 1 << (t % LANES);
                     }
@@ -1565,9 +1634,12 @@ impl Machine<'_> {
         }
         if self.profile.atlas && matches!(ins, Instr::St { .. } | Instr::Pix { .. }) {
             for &(a, _) in &writes {
-                if let Some(o) = self.written.insert(a as usize, block_ix) {
-                    race_w |= o != block_ix;
+                let a = a as usize;
+                if a >= self.written.len() {
+                    self.written.resize(a + 1, 0);
                 }
+                let o = std::mem::replace(&mut self.written[a], block_ix as u32 + 1);
+                race_w |= o != 0 && o as usize != block_ix + 1;
             }
         }
         let wp = &mut self.warps[w];
@@ -1577,6 +1649,9 @@ impl Machine<'_> {
             wp.done = true;
             wp.at_bar = false;
             wp.at_gsync = false;
+            if let Ok(i) = self.running.binary_search(&w) {
+                self.running.remove(i);
+            }
             self.commit(w, None);
             self.live -= 1;
             self.retire(block_ix);
@@ -1618,10 +1693,11 @@ impl Machine<'_> {
 
     /// The warp that issues next, the cycle it does so, and what it waited for.
     fn pick(&self) -> Option<(usize, u32, Wait)> {
-        let n = self.warps.len();
+        // Round-robin from `next`, as if walking every warp in turn.
+        let split = self.running.partition_point(|&r| r < self.next);
+        let (before, after) = self.running.split_at(split);
         let mut best: Option<(usize, u32, Wait)> = None;
-        for k in 0..n {
-            let w = (self.next + k) % n;
+        for &w in after.iter().chain(before) {
             let wp = &self.warps[w];
             if wp.done || wp.at_bar || wp.at_gsync || !wp.resident {
                 continue;
@@ -1644,7 +1720,8 @@ impl Machine<'_> {
                 if wp.ready_at > t {
                     (t, why) = (wp.ready_at, wp.why);
                 }
-                for r in ins.reads().chain(ins.dest()) {
+                let (regs, n) = &self.deps[wp.pc];
+                for &r in &regs[..*n as usize] {
                     let due = self.sb[w][r as usize];
                     if due > t {
                         t = due;
@@ -1758,7 +1835,7 @@ impl Machine<'_> {
                 wp.ready_at = at;
                 wp.why = Wait::Sync;
             }
-            self.written.clear();
+            self.written.fill(0);
         }
     }
 
@@ -2270,8 +2347,8 @@ mod tests {
         let src = "SETP.EQ p0, tx, 0\nIF p0\nSTS [0], bx\nENDIF\nBAR\nLDS r0, [0]\nST [tid], r0";
         let (out, r) = atlas(src, &[], Launch::grid(4, 64), 3);
         assert!(!r.timeout);
-        for t in 0..256 {
-            assert_eq!(out[t], (t / 64) as i32, "thread {t}");
+        for (t, &v) in out.iter().enumerate().take(256) {
+            assert_eq!(v, (t / 64) as i32, "thread {t}");
         }
     }
 
@@ -2499,8 +2576,8 @@ mod tests {
     fn a_message_pays_overhead_bandwidth_and_latency() {
         let (out, r) = origin(HANDOFF, 2, &[]);
         assert!(!r.timeout && r.deadlock.is_none());
-        for l in 0..32 {
-            assert_eq!(out[l], l as i32 + 1);
+        for (l, &v) in out.iter().enumerate().take(32) {
+            assert_eq!(v, l as i32 + 1);
         }
         let m = &r.msgs[0];
         let link = Profile::ORIGIN.link.unwrap();

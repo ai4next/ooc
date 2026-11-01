@@ -13,5 +13,6 @@ pub mod lab;
 pub mod mem;
 pub mod pipe;
 pub mod save;
+pub mod seal;
 pub mod task;
 pub mod vm;

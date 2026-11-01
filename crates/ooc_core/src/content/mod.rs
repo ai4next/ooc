@@ -27,12 +27,20 @@ mod ch14;
 mod ch15;
 mod ch16;
 mod lyra;
+pub mod manual;
+mod notes;
+pub mod open;
+mod openings;
 #[allow(dead_code)]
 mod origin;
 mod prism;
 mod syllabus;
 mod vault;
 mod warp;
+
+pub use notes::{Note, note};
+pub use open::{Open, opens};
+pub use openings::{Line, Speaker, opening};
 
 /// In play order: chapter, then slot.
 static TASKS: LazyLock<Vec<Task>> = LazyLock::new(|| {

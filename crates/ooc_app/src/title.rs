@@ -10,6 +10,9 @@ use crate::state::{Act, Screen, t};
 use crate::{Ctx, View};
 
 pub fn act(cx: &mut Ctx, a: Act) {
+    if crate::sound::settings_act(cx, a) {
+        return;
+    }
     let s = &mut cx.game.save.settings;
     match a {
         Act::NewGame => {
@@ -232,10 +235,11 @@ pub fn draw_settings(ui: &mut Ui, v: &View) {
     let l = v.lang;
     let pal = ui.pal;
     let s = &v.game.save.settings;
-    ui.card(Vec2::new(0.0, 0.0), Vec2::new(560.0, 440.0), pal.secondary);
+    let snd = v.game.save.sound;
+    ui.card(Vec2::new(0.0, 10.0), Vec2::new(560.0, 520.0), pal.secondary);
     ui.text(
         t(l, "Settings", "设置"),
-        Vec2::new(-240.0, 180.0),
+        Vec2::new(-240.0, 230.0),
         26.0,
         pal.text,
         Anchor::CENTER_LEFT,
@@ -247,18 +251,60 @@ pub fn draw_settings(ui: &mut Ui, v: &View) {
             t(l, "Off", "关")
         }
     };
-    let rows: [(&str, String); 5] = [
-        (t(l, "Volume", "音量"), format!("{} / 10", s.volume)),
-        (t(l, "Mute", "静音"), on(s.muted).into()),
-        (t(l, "Fullscreen", "全屏"), on(s.fullscreen).into()),
+    let music = if snd.music == 0 {
+        on(false).to_string()
+    } else {
+        format!("{} / 10", snd.music)
+    };
+    // (label, value, toggle) or a stepper (label, value, down, up).
+    enum Row {
+        Step(Act, Act),
+        Toggle(Act, bool),
+    }
+    let rows: [(&str, String, Row); 8] = [
+        (
+            t(l, "Volume", "音量"),
+            format!("{} / 10", s.volume),
+            Row::Step(Act::VolDown, Act::VolUp),
+        ),
+        (
+            t(l, "Mute", "静音"),
+            on(s.muted).into(),
+            Row::Toggle(Act::Mute, s.muted),
+        ),
+        (
+            t(l, "Music", "音乐"),
+            music,
+            Row::Step(Act::MusicDown, Act::MusicUp),
+        ),
+        (
+            t(l, "Simulation sound", "模拟音效"),
+            on(snd.sim).into(),
+            Row::Toggle(Act::SimSound, snd.sim),
+        ),
+        (
+            t(l, "Fullscreen", "全屏"),
+            on(s.fullscreen).into(),
+            Row::Toggle(Act::Fullscreen, s.fullscreen),
+        ),
         (
             t(l, "Reduce motion", "减少动态"),
             on(s.reduce_motion).into(),
+            Row::Toggle(Act::Motion, s.reduce_motion),
         ),
-        (t(l, "Notifications", "通知"), on(s.toasts).into()),
+        (
+            t(l, "Notifications", "通知"),
+            on(s.toasts).into(),
+            Row::Toggle(Act::Toasts, s.toasts),
+        ),
+        (
+            t(l, "Language", "语言"),
+            l.switch_label().into(),
+            Row::Toggle(Act::ToggleLang, false),
+        ),
     ];
-    for (i, (label, value)) in rows.into_iter().enumerate() {
-        let y = 110.0 - i as f32 * 56.0;
+    for (i, (label, value, row)) in rows.into_iter().enumerate() {
+        let y = 172.0 - i as f32 * 50.0;
         ui.text(
             label,
             Vec2::new(-230.0, y),
@@ -266,46 +312,33 @@ pub fn draw_settings(ui: &mut Ui, v: &View) {
             pal.text_dim,
             Anchor::CENTER_LEFT,
         );
-        if i == 0 {
-            ui.button(ButtonSpec::new(
-                Vec2::new(70.0, y),
-                Vec2::new(44.0, 36.0),
-                "−",
-                Act::VolDown,
-            ));
-            ui.text(value, Vec2::new(140.0, y), 17.0, pal.text, Anchor::CENTER);
-            ui.button(ButtonSpec::new(
-                Vec2::new(210.0, y),
-                Vec2::new(44.0, 36.0),
-                "+",
-                Act::VolUp,
-            ));
-        } else {
-            let act = [Act::Mute, Act::Fullscreen, Act::Motion, Act::Toasts][i - 1];
-            let lit = [s.muted, s.fullscreen, s.reduce_motion, s.toasts][i - 1];
-            ui.button(
-                ButtonSpec::new(Vec2::new(160.0, y), Vec2::new(140.0, 36.0), value, act)
-                    .selected(lit),
-            );
+        match row {
+            Row::Step(down, up) => {
+                ui.button(ButtonSpec::new(
+                    Vec2::new(70.0, y),
+                    Vec2::new(44.0, 36.0),
+                    "−",
+                    down,
+                ));
+                ui.text(value, Vec2::new(140.0, y), 17.0, pal.text, Anchor::CENTER);
+                ui.button(ButtonSpec::new(
+                    Vec2::new(210.0, y),
+                    Vec2::new(44.0, 36.0),
+                    "+",
+                    up,
+                ));
+            }
+            Row::Toggle(act, lit) => {
+                ui.button(
+                    ButtonSpec::new(Vec2::new(160.0, y), Vec2::new(140.0, 36.0), value, act)
+                        .selected(lit),
+                );
+            }
         }
     }
-    let y = 110.0 - 5.0 * 56.0;
-    ui.text(
-        t(l, "Language", "语言"),
-        Vec2::new(-230.0, y),
-        17.0,
-        pal.text_dim,
-        Anchor::CENTER_LEFT,
-    );
-    ui.button(ButtonSpec::new(
-        Vec2::new(160.0, y),
-        Vec2::new(140.0, 36.0),
-        l.switch_label(),
-        Act::ToggleLang,
-    ));
     ui.button(
         ButtonSpec::new(
-            Vec2::new(0.0, -270.0),
+            Vec2::new(0.0, -300.0),
             Vec2::new(180.0, 44.0),
             t(l, "Done", "完成"),
             Act::Back,

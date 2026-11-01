@@ -468,9 +468,9 @@ fn fixed_overflow() -> Task {
     }
 }
 
-/// rom[0..2]: where the water was tapped; rom[2..18]: wave shape W; rom[18..34]:
+/// rom[0..2]: where the water was tapped; rom[2..18]: wave shape W; rom[18..50]:
 /// fade D. Both tables are Q8.
-fn ripple(w: [i32; 16], fade: [i32; 16], tap: (i32, i32), frame: i32) -> Case {
+fn ripple(w: [i32; 16], fade: [i32; 32], tap: (i32, i32), frame: i32) -> Case {
     let mut rom = vec![tap.0, tap.1];
     rom.extend(w);
     rom.extend(fade);
@@ -483,7 +483,7 @@ fn pond(tap: (i32, i32), frame: i32) -> Case {
         let phase = i as f64 * std::f64::consts::TAU / 16.0;
         (128.0 + 127.0 * phase.sin()).round() as i32
     };
-    let fade = |i: usize| (255.0 * 0.8f64.powi(i as i32)).round() as i32;
+    let fade = |i: usize| (255.0 * 0.9f64.powi(i as i32)).round() as i32;
     ripple(
         std::array::from_fn(wave),
         std::array::from_fn(fade),
@@ -500,12 +500,12 @@ fn choppy(seed: u64, tap: (i32, i32), frame: i32) -> Case {
     ripple(w, fade, tap, frame)
 }
 
-/// Colour = ((W[(d − frame) AND 15] × D[min(d >> 1, 15)]) >> 8) >> 5.
+/// Colour = ((W[(d − frame) AND 15] × D[min(d >> 1, 31)]) >> 8) >> 5.
 fn rings(c: &Case) -> Vec<Option<i32>> {
     paint(c, |r, x, y| {
         let d = (x - r[0]).abs() + (y - r[1]).abs();
         let wave = r[2 + ((d - c.frame) & 15) as usize];
-        let fade = r[18 + (d >> 1).min(15) as usize];
+        let fade = r[18 + (d >> 1).min(31) as usize];
         ((wave * fade) >> 8) >> 5
     })
 }
@@ -515,22 +515,22 @@ fn ripple_tank() -> Task {
         profile: Profile::PRISM_UNITS,
         title: Tr::new("The Ripple Tank", "水波盘"),
         brief: Tr::new(
-            "Huajuan wants the school's Prism to be a ripple tank: a student taps the water and rings spread out from that spot.\nrom[0] and rom[1] hold the tap point (cx, cy). rom[2..18] is a table of 16 wave heights W and rom[18..34] a table of 16 fade factors D, both Q8 (0 to 255).\nFor every pixel: d = |x − cx| + |y − cy|, phase = (d − frame) AND 15, amplitude = (W[phase] × D[min(d >> 1, 15)]) >> 8, colour = amplitude >> 5.\nThe whole frame has to fit in 300 cycles. Latencies as in 5-2. There is no starting program.",
-            "花卷想让学校那台 Prism 变成水波盘：学生在水面上点一下，一圈圈波纹从那里扩散开。\nrom[0] 和 rom[1] 是点击位置 (cx, cy)。rom[2..18] 是 16 项波形高度 W，rom[18..34] 是 16 项衰减系数 D，都是 Q8（0 到 255）。\n每个像素：d = |x − cx| + |y − cy|，相位 = (d − frame) AND 15，幅度 = (W[相位] × D[min(d >> 1, 15)]) >> 8，颜色 = 幅度 >> 5。\n整帧要在 300 个周期之内完成。延迟和 5-2 一样。没有初始方案。",
+            "Huajuan wants the school's Prism to be a ripple tank: a student taps the water and rings spread out from that spot.\nrom[0] and rom[1] hold the tap point (cx, cy). rom[2..18] is a table of 16 wave heights W and rom[18..50] a table of 32 fade factors D, both Q8 (0 to 255).\nFor every pixel: d = |x − cx| + |y − cy|, phase = (d − frame) AND 15, amplitude = (W[phase] × D[min(d >> 1, 31)]) >> 8, colour = amplitude >> 5.\nThe whole frame has to fit in 1200 cycles. Latencies as in 5-2. There is no starting program.",
+            "花卷想让学校那台 Prism 变成水波盘：学生在水面上点一下，一圈圈波纹从那里扩散开。\nrom[0] 和 rom[1] 是点击位置 (cx, cy)。rom[2..18] 是 16 项波形高度 W，rom[18..50] 是 32 项衰减系数 D，都是 Q8（0 到 255）。\n每个像素：d = |x − cx| + |y − cy|，相位 = (d − frame) AND 15，幅度 = (W[相位] × D[min(d >> 1, 31)]) >> 8，颜色 = 幅度 >> 5。\n整帧要在 1200 个周期之内完成。延迟和 5-2 一样。没有初始方案。",
         ),
         cases: || {
-            [((8, 8), 0), ((15, 0), 3), ((0, 11), 9), ((5, 10), 40)]
+            [((16, 16), 0), ((31, 0), 3), ((0, 22), 9), ((10, 20), 40)]
                 .map(|(tap, f)| pond(tap, f))
                 .to_vec()
         },
         hidden: || {
-            [(196, (0, 0), 17), (197, (15, 15), 60), (198, (3, 12), 29)]
+            [(196, (0, 0), 17), (197, (31, 31), 60), (198, (6, 24), 29)]
                 .map(|(s, tap, f)| choppy(s, tap, f))
                 .to_vec()
         },
         expect: rings,
-        limit: Some(Goal::new(Metric::Cycles, 300)),
-        goals: [Goal::new(Metric::Cycles, 232), Goal::new(Metric::Size, 28)],
+        limit: Some(Goal::new(Metric::Cycles, 1200)),
+        goals: [Goal::new(Metric::Cycles, 928), Goal::new(Metric::Size, 28)],
         starter: Source::Code(
             "; one pixel per thread | 每个线程一个像素\n; MUL lands after 4 beats, LD after 3, the rest after 2 | MUL 4 拍落地，LD 3 拍，其余 2 拍\n",
         ),
@@ -539,7 +539,7 @@ fn ripple_tank() -> Task {
         ),
         // The students tap the water; the rings also keep moving on their own.
         live: Some(|frame, at| {
-            let tap = ((at[0] + 4).clamp(0, 15), (at[1] + 4).clamp(0, 15));
+            let tap = ((at[0] + 4).clamp(0, 31), (at[1] + 4).clamp(0, 31));
             pond(tap, frame / 3)
         }),
         steer: Some(Tr::new("TAP THE WATER", "点一下水面")),

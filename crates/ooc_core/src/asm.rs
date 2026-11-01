@@ -9,6 +9,8 @@ pub enum AsmErrorKind {
     BadOperand(String),
     Arity { want: usize, got: usize },
     Shape(ShapeError),
+    /// A `USE name` line that could not be expanded.
+    Seal(crate::seal::SealError),
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -306,6 +308,16 @@ pub fn parse(source: &str) -> Result<(Vec<Instr>, Vec<usize>), AsmError> {
 /// Assembles and validates block structure.
 pub fn assemble(source: &str) -> Result<Program, AsmError> {
     let (code, lines) = parse(source)?;
+    finish(source, code, lines)
+}
+
+/// Builds the program from parsed code (`lines` maps each instruction to its
+/// source line) and reads the `.` directives from `source`.
+pub(crate) fn finish(
+    source: &str,
+    code: Vec<Instr>,
+    lines: Vec<usize>,
+) -> Result<Program, AsmError> {
     let mut prog = Program::new(code).map_err(|e| {
         let line = e.line().and_then(|i| lines.get(i).copied()).unwrap_or(0);
         AsmError {

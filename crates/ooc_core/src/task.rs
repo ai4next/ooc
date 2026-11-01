@@ -5,7 +5,7 @@ use oo_base::{Cat, LevelKind, Tr};
 use serde::{Deserialize, Serialize};
 
 use crate::graph::{Graph, NodeKind};
-use crate::isa::{FB_LEN, OpKind};
+use crate::isa::{FB_LEN, OpKind, WIDE_LEN};
 use crate::vm::Launch;
 
 /// Chapters in the game, and levels in each (bible §3).
@@ -286,6 +286,11 @@ pub fn blank(len: usize) -> Vec<i32> {
 
 pub fn screen_blank(_: &Case) -> Vec<i32> {
     blank(FB_LEN)
+}
+
+/// A black 32×32 screen (Prism onwards).
+pub fn wide_blank(_: &Case) -> Vec<i32> {
+    blank(WIDE_LEN)
 }
 
 pub fn lanes_blank(_: &Case) -> Vec<i32> {

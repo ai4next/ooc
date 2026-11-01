@@ -4,7 +4,7 @@
 use oo_base::Tr;
 
 use super::{below, rng, stub};
-use crate::isa::{Alu, FB_LEN, FB_W, LANES, OpKind};
+use crate::isa::{Alu, LANES, OpKind, WIDE_LEN, WIDE_W};
 use crate::task::*;
 use crate::vm::{Launch, Profile};
 
@@ -66,14 +66,14 @@ pub(super) const PRISM_OPS: &[OpKind] = &[
 pub(super) fn base(id: &'static str, slot: u8, view: View, ops: &'static [OpKind]) -> Task {
     let (launch, out_len) = match view {
         View::Lanes => (Launch::ONE_WARP, LANES),
-        _ => (Launch::SCREEN, FB_LEN),
+        _ => (Launch::WIDE, WIDE_LEN),
     };
     Task {
         profile: Profile::PRISM,
         init: if view == View::Lanes {
             lanes_blank
         } else {
-            screen_blank
+            wide_blank
         },
         ..stub(id, 4, slot, view, Editor::Code(ops), launch, out_len)
     }
@@ -126,10 +126,10 @@ pub(super) fn edges(v: [(i32, i32); 3]) -> Vec<i32> {
     out
 }
 
-/// A screen from a per-pixel rule over the case's ROM.
+/// A 32×32 screen from a per-pixel rule over the case's ROM.
 pub(super) fn paint(c: &Case, f: impl Fn(&[i32], i32, i32) -> i32) -> Vec<Option<i32>> {
-    (0..FB_LEN as i32)
-        .map(|t| Some(f(&c.rom, t % FB_W, t / FB_W)))
+    (0..WIDE_LEN as i32)
+        .map(|t| Some(f(&c.rom, t % WIDE_W, t / WIDE_W)))
         .collect()
 }
 
@@ -220,12 +220,12 @@ fn three_beats() -> Task {
 /// Triangles in half-pixel units (pixel corners are even), with colours.
 /// Clockwise, counter-clockwise, a sliver, a degenerate line, then hidden ones.
 const TRIANGLES: [([(i32, i32); 3], i32); 6] = [
-    ([(4, 4), (28, 8), (10, 28)], 12),
-    ([(26, 4), (4, 14), (22, 30)], 14),
-    ([(2, 2), (30, 10), (6, 8)], 11),
-    ([(4, 4), (16, 16), (28, 28)], 9),
-    ([(30, 2), (18, 30), (2, 12)], 10),
-    ([(6, 26), (28, 20), (12, 2)], 8),
+    ([(8, 8), (56, 16), (20, 56)], 12),
+    ([(52, 8), (8, 28), (44, 60)], 14),
+    ([(4, 4), (60, 20), (12, 16)], 11),
+    ([(8, 8), (32, 32), (56, 56)], 9),
+    ([(60, 4), (36, 60), (4, 24)], 10),
+    ([(12, 52), (56, 40), (24, 4)], 8),
 ];
 
 /// rom[0..9] the three edges, rom[9] the colour, rom[10..14] the bounding
@@ -250,8 +250,8 @@ fn the_triangle() -> Task {
         cases: || (0..4).map(triangle).collect(),
         hidden: || (4..6).map(triangle).collect(),
         expect: |c| paint(c, |r, x, y| if covered(r, 0, x, y) { r[9] } else { 0 }),
-        limit: Some(Goal::new(Metric::Cycles, 160)),
-        goals: [Goal::new(Metric::Cycles, 112), Goal::new(Metric::Size, 14)],
+        limit: Some(Goal::new(Metric::Cycles, 640)),
+        goals: [Goal::new(Metric::Cycles, 440), Goal::new(Metric::Size, 14)],
         starter: Source::Code(
             "; the old rasteriser: inside the bounding box | 旧光栅器：包围盒以内\nLD r0, [10]\nLD r2, [12]\nLD r1, [11]\nLD r3, [13]\nLD r5, [9]\nSETP.GE p0, x, r0\nSETP.LE p1, x, r2\nSETP.GE p2, y, r1\nSETP.LE p3, y, r3\nIF p0\n  IF p1\n    IF p2\n      IF p3\n        PIX r5\n      ENDIF\n    ENDIF\n  ENDIF\nENDIF\n",
         ),
@@ -320,28 +320,28 @@ type Face = ([(i32, i32); 3], [i32; 3], i32);
 
 const PAIRS: [(Face, Face); 6] = [
     (
-        ([(2, 4), (28, 2), (16, 30)], [4, 2, 0], 12),
-        ([(4, 28), (30, 26), (14, 2)], [-4, -2, 85], 8),
+        ([(4, 8), (56, 4), (32, 60)], [4, 2, 0], 12),
+        ([(8, 56), (60, 52), (28, 4)], [-4, -2, 170], 8),
     ),
     (
-        ([(2, 2), (30, 6), (4, 30)], [6, 0, 0], 11),
-        ([(30, 2), (28, 30), (2, 18)], [-6, 0, 73], 14),
+        ([(4, 4), (60, 12), (8, 60)], [6, 0, 0], 11),
+        ([(60, 4), (56, 60), (4, 36)], [-6, 0, 146], 14),
     ),
     (
-        ([(4, 6), (30, 14), (8, 30)], [0, 4, 2], 10),
-        ([(2, 10), (26, 2), (22, 28)], [2, -4, 41], 12),
+        ([(8, 12), (60, 28), (16, 60)], [0, 4, 4], 10),
+        ([(4, 20), (52, 4), (44, 56)], [2, -4, 82], 12),
     ),
     (
-        ([(6, 2), (28, 20), (2, 24)], [4, -2, 40], 9),
-        ([(30, 8), (4, 4), (18, 30)], [-2, 4, 41], 11),
+        ([(12, 4), (56, 40), (4, 48)], [4, -2, 80], 9),
+        ([(60, 16), (8, 8), (36, 60)], [-2, 4, 82], 11),
     ),
     (
-        ([(2, 14), (24, 2), (30, 30)], [-2, -4, 90], 14),
-        ([(4, 30), (10, 2), (30, 18)], [2, 4, -1], 10),
+        ([(4, 28), (48, 4), (60, 60)], [-2, -4, 180], 14),
+        ([(8, 60), (20, 4), (60, 36)], [2, 4, -2], 10),
     ),
     (
-        ([(4, 2), (30, 28), (2, 26)], [2, 6, 0], 8),
-        ([(28, 2), (30, 30), (2, 10)], [-4, -2, 93], 12),
+        ([(8, 4), (60, 56), (4, 52)], [2, 6, 0], 8),
+        ([(56, 4), (60, 60), (4, 20)], [-4, -2, 186], 12),
     ),
 ];
 
@@ -376,8 +376,8 @@ fn the_depth() -> Task {
         cases: || (0..4).map(pair).collect(),
         hidden: || (4..6).map(pair).collect(),
         expect: |c| paint(c, nearest),
-        limit: Some(Goal::new(Metric::Cycles, 280)),
-        goals: [Goal::new(Metric::Cycles, 216), Goal::new(Metric::Size, 27)],
+        limit: Some(Goal::new(Metric::Cycles, 1120)),
+        goals: [Goal::new(Metric::Cycles, 856), Goal::new(Metric::Size, 27)],
         starter: Source::Code(
             "; painter: A first, then B on top | 画家算法：先画 A，再把 B 盖上去\nEDGE r0, [0]\nEDGE r1, [3]\nEDGE r2, [6]\nEDGE r3, [16]\nEDGE r4, [19]\nMUL r0, r0, r1\nEDGE r5, [22]\nMUL r1, r1, r2\nMUL r3, r3, r4\nMUL r4, r4, r5\nMIN r0, r0, r1\nLD r8, [12]\nMIN r3, r3, r4\nSETP.GT p0, r0, 0\nLD r9, [28]\nSEL r8, p0, r8, 0\nSETP.GT p1, r3, 0\nNOP\nSEL r8, p1, r9, r8\nNOP\nNOP\nPIX r8\n",
         ),
@@ -556,25 +556,25 @@ fn the_turn() -> Task {
 }
 
 /// Face of the wind tower model under each pixel (0 = sky): a narrow lamp
-/// room on rows 2..4 and the tower on rows 5..15, five facets across each.
+/// room on rows 4..8 and the tower on rows 10..30, five facets across each.
 fn facet(x: i32, y: i32) -> i32 {
     let w = match y {
-        2 | 3 => 3,
-        5..=14 => 5,
+        4..=7 => 6,
+        10..=29 => 10,
         _ => return 0,
     };
-    if x < 8 - w || x >= 8 + w {
+    if x < 16 - w || x >= 16 + w {
         return 0;
     }
-    (x - 8 + w) * 5 / (2 * w) + 1
+    (x - 16 + w) * 5 / (2 * w) + 1
 }
 
-/// rom[0..256] facet per pixel, rom[256..262] facet normal x·64,
-/// rom[264..270] normal z·64, rom[272..274] the light, rom[280..288] the
-/// colour ramp from unlit to full.
+/// rom[0..1024] facet per pixel, rom[1024..1030] facet normal x·64,
+/// rom[1032..1038] normal z·64, rom[1040..1042] the light, rom[1048..1056]
+/// the colour ramp from unlit to full.
 fn lit(light: (i32, i32)) -> Case {
-    let mut rom: Vec<i32> = (0..FB_LEN as i32)
-        .map(|t| facet(t % FB_W, t / FB_W))
+    let mut rom: Vec<i32> = (0..WIDE_LEN as i32)
+        .map(|t| facet(t % WIDE_W, t / WIDE_W))
         .collect();
     let deg = [-72.0f64, -36.0, 0.0, 36.0, 72.0];
     for f in [f64::sin, f64::cos] {
@@ -583,16 +583,16 @@ fn lit(light: (i32, i32)) -> Case {
         rom.extend([0, 0]);
     }
     rom.extend([light.0, light.1]);
-    rom.resize(280, 0);
+    rom.resize(1048, 0);
     rom.extend([0, 1, 2, 4, 9, 15, 7, 10]);
     rom_case(rom)
 }
 
 fn shade(c: &Case) -> Vec<Option<i32>> {
     paint(c, |r, x, y| {
-        let f = r[(y * FB_W + x) as usize] as usize;
-        let d = r[256 + f] * r[272] + r[264 + f] * r[273];
-        r[280 + (d.max(0) >> 9).min(7) as usize]
+        let f = r[(y * WIDE_W + x) as usize] as usize;
+        let d = r[1024 + f] * r[1040] + r[1032 + f] * r[1041];
+        r[1048 + (d.max(0) >> 9).min(7) as usize]
     })
 }
 
@@ -600,18 +600,18 @@ fn the_stale() -> Task {
     Task {
         title: Tr::new("Black Stripes", "黑纹"),
         brief: Tr::new(
-            "The lighting kernel shades each facet by how much it faces the light: brightness = (normal · light) >> 9, from 0 to 7, then a colour from the ramp at rom[280..288].\nIt was scheduled for Prism by hand. Since the last edit, the facets facing the visitors have gone black.\nFind the beat where an instruction read a register before its result had landed. Point at it in the Warp River, then fix it.",
-            "光照内核按每个面朝向光的程度着色：亮度 = (法线 · 光) >> 9，取 0 到 7，再到 rom[280..288] 的色带里取颜色。\n它是手工为 Prism 排过的。上次改动之后，朝向参观者的那些面变成了黑的。\n找到那一拍：某条指令在结果落地之前就读了寄存器。先在 Warp River 里指出它，再修好它。",
+            "The lighting kernel shades each facet by how much it faces the light: brightness = (normal · light) >> 9, from 0 to 7, then a colour from the ramp at rom[1048..1056].\nIt was scheduled for Prism by hand. Since the last edit, the facets facing the visitors have gone black.\nFind the beat where an instruction read a register before its result had landed. Point at it in the Warp River, then fix it.",
+            "光照内核按每个面朝向光的程度着色：亮度 = (法线 · 光) >> 9，取 0 到 7，再到 rom[1048..1056] 的色带里取颜色。\n它是手工为 Prism 排过的。上次改动之后，朝向参观者的那些面变成了黑的。\n找到那一拍：某条指令在结果落地之前就读了寄存器。先在 Warp River 里指出它，再修好它。",
         ),
         cases: || [(-30, 50), (40, 45), (-55, 25), (20, 60)].map(lit).to_vec(),
         hidden: || [(-10, 64), (50, -20)].map(lit).to_vec(),
         expect: shade,
-        goals: [Goal::new(Metric::Cycles, 256), Goal::new(Metric::Size, 32)],
+        goals: [Goal::new(Metric::Cycles, 1024), Goal::new(Metric::Size, 32)],
         starter: Source::Code(
-            "LD r0, [tid]\nLD r5, [272]\nNOP\nADD r1, r0, 256\nADD r3, r0, 264\nNOP\nLD r2, [r1]\nLD r3, [r3]\n; light z, added in the last edit | 光的 z，上次改动加的\nLD r6, [273]\nMUL r2, r2, r5\nMUL r3, r3, r6\nNOP\nNOP\nADD r2, r2, r3\nNOP\nNOP\nMAX r2, r2, 0\nNOP\nNOP\nSHR r2, r2, 9\nNOP\nNOP\nMIN r2, r2, 7\nNOP\nNOP\nADD r2, r2, 280\nNOP\nNOP\nLD r2, [r2]\nNOP\nNOP\nPIX r2\n",
+            "LD r0, [tid]\nLD r5, [1040]\nNOP\nADD r1, r0, 1024\nADD r3, r0, 1032\nNOP\nLD r2, [r1]\nLD r3, [r3]\n; light z, added in the last edit | 光的 z，上次改动加的\nLD r6, [1041]\nMUL r2, r2, r5\nMUL r3, r3, r6\nNOP\nNOP\nADD r2, r2, r3\nNOP\nNOP\nMAX r2, r2, 0\nNOP\nNOP\nSHR r2, r2, 9\nNOP\nNOP\nMIN r2, r2, 7\nNOP\nNOP\nADD r2, r2, 1048\nNOP\nNOP\nLD r2, [r2]\nNOP\nNOP\nPIX r2\n",
         ),
         reference: Source::Code(
-            "LD r0, [tid]\nLD r5, [272]\nLD r6, [273]\nADD r1, r0, 256\nADD r3, r0, 264\nNOP\nLD r2, [r1]\nLD r3, [r3]\nNOP\nMUL r2, r2, r5\nMUL r3, r3, r6\nNOP\nNOP\nADD r2, r2, r3\nNOP\nNOP\nMAX r2, r2, 0\nNOP\nNOP\nSHR r2, r2, 9\nNOP\nNOP\nMIN r2, r2, 7\nNOP\nNOP\nADD r2, r2, 280\nNOP\nNOP\nLD r2, [r2]\nNOP\nNOP\nPIX r2\n",
+            "LD r0, [tid]\nLD r5, [1040]\nLD r6, [1041]\nADD r1, r0, 1024\nADD r3, r0, 1032\nNOP\nLD r2, [r1]\nLD r3, [r3]\nNOP\nMUL r2, r2, r5\nMUL r3, r3, r6\nNOP\nNOP\nADD r2, r2, r3\nNOP\nNOP\nMAX r2, r2, 0\nNOP\nNOP\nSHR r2, r2, 9\nNOP\nNOP\nMIN r2, r2, 7\nNOP\nNOP\nADD r2, r2, 1048\nNOP\nNOP\nLD r2, [r2]\nNOP\nNOP\nPIX r2\n",
         ),
         predict: Predict {
             question: Tr::new(
@@ -639,8 +639,8 @@ fn the_stale() -> Task {
                 "在“流水线”页里逐步看：有一次读 r6 被标成红色，就在 LD r6 发出后的第二拍。",
             ),
             Tr::new(
-                "Move LD r6, [273] up into the empty beat after LD r5. Everything else can stay.",
-                "把 LD r6, [273] 挪到 LD r5 后面那个空拍里。其他都不用动。",
+                "Move LD r6, [1041] up into the empty beat after LD r5. Everything else can stay.",
+                "把 LD r6, [1041] 挪到 LD r5 后面那个空拍里。其他都不用动。",
             ),
         ],
         insight: Insight {
@@ -675,26 +675,30 @@ fn the_stale() -> Task {
 
 /// Half-width of the wind tower on each row in half-pixels (0 = sky): lamp
 /// room, gallery, then the tower widening to its foot.
-const HALF: [i32; 16] = [0, 7, 7, 7, 12, 9, 9, 10, 10, 10, 11, 11, 12, 12, 13, 13];
+const HALF: [i32; 32] = [
+    0, 0, 14, 14, 14, 14, 14, 14, 24, 24, // sky, lamp room, gallery
+    18, 18, 18, 19, 19, 19, 20, 20, 20, 21, 21, 21, // the tower
+    22, 22, 23, 23, 24, 24, 25, 25, 26, 26,
+];
 /// Light from the well side, in 64ths of a turn.
 const SUN: f64 = -6.0;
 
 /// rom[4y..4y+4]: the row's screen-to-surface edge and its colour band;
-/// rom[64..97] light per surface column; rom[128..288] screen offset to
-/// surface column (100 = sky); rom[300..] the colour bands.
+/// rom[160..193] light per surface column; rom[256..416] screen offset to
+/// surface column (196 = sky); rom[416..] the colour bands.
 fn lighthouse(turn: i32) -> Case {
-    let mut rom = vec![0; 412];
+    let mut rom = vec![0; 528];
     for (y, &h) in HALF.iter().enumerate() {
         let band = match y {
-            1..=3 => 316,
-            4 => 332,
-            _ => 300,
+            2..=7 => 432,
+            8 | 9 => 448,
+            _ => 416,
         };
         let row = match h {
-            0 => [0, 0, 128 * 16, 300],
+            0 => [0, 0, 256 * 16, 416],
             h => {
                 let s = (512.0 / h as f64).round() as i32;
-                [2 * s, 0, -15 * s + 208 * 16 + 8, band]
+                [2 * s, 0, -31 * s + 336 * 16 + 8, band]
             }
         };
         rom[4 * y..4 * y + 4].copy_from_slice(&row);
@@ -702,25 +706,25 @@ fn lighthouse(turn: i32) -> Case {
     let tau = std::f64::consts::TAU;
     for v in 0..=32 {
         let phi = (v - 16) as f64 * tau / 64.0;
-        rom[64 + v as usize] = (1.0 + 6.0 * (phi - SUN * tau / 64.0).cos())
+        rom[160 + v as usize] = (1.0 + 6.0 * (phi - SUN * tau / 64.0).cos())
             .round()
             .clamp(0.0, 7.0) as i32;
     }
-    rom[100] = 64;
-    for (i, cell) in rom.iter_mut().enumerate().take(288).skip(128) {
-        let u = i as f64 - 208.0;
+    rom[196] = 64;
+    for (i, cell) in rom.iter_mut().enumerate().take(416).skip(256) {
+        let u = i as f64 - 336.0;
         *cell = if u.abs() <= 32.0 {
-            80 + ((u / 32.0).asin() * 64.0 / tau).round() as i32
+            176 + ((u / 32.0).asin() * 64.0 / tau).round() as i32
         } else {
-            100
+            196
         };
     }
-    rom[300..348].copy_from_slice(&[
+    rom[416..464].copy_from_slice(&[
         1, 2, 2, 8, 8, 8, 14, 14, 1, 5, 13, 13, 6, 6, 7, 7, // red and white
         4, 9, 9, 9, 10, 10, 10, 10, 9, 10, 10, 7, 7, 7, 7, 7, // the lamp
         0, 1, 5, 5, 13, 13, 6, 6, 0, 1, 5, 5, 13, 13, 6, 6, // the gallery
     ]);
-    rom[364..412].fill(1);
+    rom[480..528].fill(1);
     Case { rom, frame: turn }
 }
 
@@ -737,14 +741,14 @@ fn the_lighthouse() -> Task {
     Task {
         title: Tr::new("The Turning Wind Tower", "会转的风塔"),
         brief: Tr::new(
-            "Huajuan wants the school's Prism to show the wind tower turning, so the children can drag it round and see why the far side goes dark.\nEach row of the tower is a slice of a cylinder. EDGE r, [4y] gives that row's position ×16 into the table at rom[128..288], which turns a screen offset into a surface column v (100 = sky).\nrom[v] is the light on that column, 0 to 7. The paint is red and white bands 8 columns wide that turn with the frame: the band is (v + frame + y) AND 8.\nThe colour is rom[rom[4y+3] + band + light]. Sky cells read colour 1 the same way. Keep it inside a frame of 240 cycles.",
-            "花卷想让学校那台 Prism 显示风塔转起来，让孩子们拖着它转，看清背光面为什么会暗。\n塔的每一行是圆柱的一片。EDGE r, [4y] 给出这一行的位置 ×16，它指向 rom[128..288] 的表，把屏幕偏移换成表面列 v（100 表示天空）。\nrom[v] 是这一列的光照，0 到 7。塔身漆着 8 列宽的红白条纹，随帧转动：条纹 = (v + frame + y) AND 8。\n颜色是 rom[rom[4y+3] + 条纹 + 光照]。天空格子用同样的方式读到颜色 1。要在 240 个周期的帧预算之内。",
+            "Huajuan wants the school's Prism to show the wind tower turning, so the children can drag it round and see why the far side goes dark.\nEach row of the tower is a slice of a cylinder. EDGE r, [4y] gives that row's position ×16 into the table at rom[256..416], which turns a screen offset into a surface column v (196 = sky).\nrom[v] is the light on that column, 0 to 7. The paint is red and white bands 8 columns wide that turn with the frame: the band is (v + frame + y) AND 8.\nThe colour is rom[rom[4y+3] + band + light]. Sky cells read colour 1 the same way. Keep it inside a frame of 960 cycles.",
+            "花卷想让学校那台 Prism 显示风塔转起来，让孩子们拖着它转，看清背光面为什么会暗。\n塔的每一行是圆柱的一片。EDGE r, [4y] 给出这一行的位置 ×16，它指向 rom[256..416] 的表，把屏幕偏移换成表面列 v（196 表示天空）。\nrom[v] 是这一列的光照，0 到 7。塔身漆着 8 列宽的红白条纹，随帧转动：条纹 = (v + frame + y) AND 8。\n颜色是 rom[rom[4y+3] + 条纹 + 光照]。天空格子用同样的方式读到颜色 1。要在 960 个周期的帧预算之内。",
         ),
         cases: || [0, 3, 6, 9, 12, 14].map(lighthouse).to_vec(),
         hidden: || [5, 11].map(lighthouse).to_vec(),
         expect: tower_view,
-        limit: Some(Goal::new(Metric::Cycles, 240)),
-        goals: [Goal::new(Metric::Cycles, 208), Goal::new(Metric::Size, 26)],
+        limit: Some(Goal::new(Metric::Cycles, 960)),
+        goals: [Goal::new(Metric::Cycles, 832), Goal::new(Metric::Size, 26)],
         starter: Source::Code(
             "; one pixel per thread; results land three beats later | 每个线程一个像素；结果三拍后才落地\n",
         ),
@@ -802,8 +806,8 @@ fn the_lighthouse() -> Task {
                 "误解：指令越少越快。在 Prism 上，塞满 NOP 的内核可能比一个更短、却在错误地方等待的内核还快。",
             ),
             simplified: Tr::new(
-                "The tower is drawn as a cylinder from tables. A real renderer would transform and raster every triangle, as in 4-2 to 4-4.",
-                "这座塔是用查表画出的圆柱。真正的渲染器会像 4-2 到 4-4 那样变换并光栅化每个三角形。",
+                "The tower is drawn as a cylinder from tables. A real renderer would transform and raster every triangle, as in 6-1 to 6-7.",
+                "这座塔是用查表画出的圆柱。真正的渲染器会像 6-1 到 6-7 那样变换并光栅化每个三角形。",
             ),
         },
         ..base("the-lighthouse", 6, View::Screen, PRISM_OPS)

@@ -6,6 +6,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::isa::*;
 
+mod decompile;
+pub use decompile::{Unfit, code_ops, decompile};
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum NodeKind {
     X,

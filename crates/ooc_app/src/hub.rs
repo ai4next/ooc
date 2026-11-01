@@ -10,7 +10,7 @@ use oo_kit::ui::{ButtonSpec, Tone, Ui};
 use oo_kit::ui::{TipArea, Tooltip};
 use ooc_core::content;
 use ooc_core::save::SaveData;
-use ooc_core::task::{Chapter, Goal, LEVELS_PER_CHAPTER, Metric, Task, kind_of_slot};
+use ooc_core::task::{CHAPTERS, Chapter, Goal, LEVELS_PER_CHAPTER, Metric, Task, kind_of_slot};
 
 use crate::state::{Act, Screen, t};
 use crate::{Ctx, View, bench};
@@ -37,10 +37,21 @@ pub fn act(cx: &mut Ctx, a: Act) {
             }
         }
         Act::StartBench => cx.go(Screen::Bench),
+        Act::Problem(_) => crate::problems::act(cx, a),
+        Act::Lab(i) => {
+            bench::open_lab(&mut cx.s, &cx.game, i);
+            cx.go(Screen::Bench);
+        }
         Act::Chapter(n) => {
             cx.s.chapter = Some(n);
+            cx.s.ori_menu = false;
             cx.dirty();
         }
+        Act::OriMenu => {
+            cx.s.ori_menu = !cx.s.ori_menu;
+            cx.dirty();
+        }
+        Act::Opening(_) | Act::Line | Act::SkipOpening => crate::hall::opening_act(cx, a),
         _ => {}
     }
 }
@@ -83,14 +94,14 @@ pub fn chapter_accent(ch: &Chapter, pal: &oo_kit::theme::Palette) -> Color {
 }
 
 /// The chapter the hub shows: the one picked, else where ORI points next.
-fn shown_chapter(v: &View) -> u8 {
+pub fn shown_chapter(v: &View) -> u8 {
     v.s.chapter
         .or_else(|| next_task(&v.game.save).map(|i| content::tasks()[i].chapter))
         .unwrap_or(1)
 }
 
 /// A chapter opens with its first implemented level.
-fn chapter_open(n: u8, save: &SaveData) -> bool {
+pub fn chapter_open(n: u8, save: &SaveData) -> bool {
     content::in_chapter(n)
         .next()
         .is_some_and(|t| save.is_unlocked(t))
@@ -248,28 +259,68 @@ pub fn draw_hub(ui: &mut Ui, v: &View) {
         .font(16.0)
         .tip(t(l, "Settings", "设置").to_string()),
     );
+    // The Grid Hall across the top; the stations pick the chapter.
+    crate::hall::draw_hall(ui, v, v.s.opening.is_none());
+    if v.s.opening.is_some() {
+        crate::hall::draw_opening(ui, v);
+        return;
+    }
     let next = next_task(save);
     let tasks = content::tasks();
     let shown = shown_chapter(v);
-    draw_rail(ui, shown, save, l);
-    // Right: the chapter's machine, its client and its eight levels.
+    // Below: the chapter, its client and its eight levels.
     let ch = content::chapter(shown);
     let accent = chapter_accent(ch, &pal);
-    let center = Vec2::new(160.0, -18.0);
-    let size = Vec2::new(900.0, 560.0);
+    let center = Vec2::new(0.0, -140.0);
+    let size = Vec2::new(1264.0, 290.0);
     ui.card(center, size, accent);
     let top = center.y + size.y / 2.0;
+    let bottom = center.y - size.y / 2.0;
     let left = center.x - size.x / 2.0 + 28.0;
+    draw_chapter_info(ui, v, ch, accent, Vec2::new(left, top));
+    draw_strip(ui, shown, save, l, Vec2::new(left, bottom + 26.0));
+    let split = -186.0;
+    ui.rect(
+        Vec2::new(split, center.y),
+        Vec2::new(1.0, size.y - 36.0),
+        pal.line.with_alpha(0.5),
+        4.6,
+    );
+    let (cell_w, cell_h) = (376.0, 54.0);
+    for slot in 1..=LEVELS_PER_CHAPTER {
+        let col = ((slot - 1) / 4) as f32;
+        let row = ((slot - 1) % 4) as f32;
+        let at = Vec2::new(28.0 + col * 394.0, top - 44.0 - row * 64.0);
+        let found = tasks
+            .iter()
+            .enumerate()
+            .find(|(_, t)| t.chapter == ch.number && t.slot == slot);
+        draw_level(ui, v, found, ch.number, slot, at, Vec2::new(cell_w, cell_h), next);
+    }
+    draw_bottom_row(ui, v, ch, next);
+}
+
+/// The chapter's caption, title, client, tagline and portrait, from the
+/// card's top-left corner `at`.
+fn draw_chapter_info(ui: &mut Ui, v: &View, ch: &Chapter, accent: Color, at: Vec2) {
+    let pal = ui.pal;
+    let l = v.lang;
+    let save = &v.game.save;
+    let (left, top) = (at.x, at.y);
     ui.caption(
         format!("{} · {}", chapter_word(ch.number, l), ch.machine.get(l)),
         Vec2::new(left, top - 26.0),
         accent,
         Anchor::CENTER_LEFT,
     );
+    // Long titles shrink so they stay clear of the client's portrait.
+    let title = ch.title.get(l);
+    let em: f32 = title.chars().map(|c| if c.is_ascii() { 0.53 } else { 1.0 }).sum();
+    let room = if ch.client.is_some() { 285.0 } else { 520.0 };
     ui.text(
-        ch.title.get(l),
+        title,
         Vec2::new(left, top - 54.0),
-        24.0,
+        (room / em.max(1.0)).clamp(16.0, 22.0),
         pal.text,
         Anchor::CENTER_LEFT,
     );
@@ -280,126 +331,155 @@ pub fn draw_hub(ui: &mut Ui, v: &View) {
     };
     ui.text(
         client,
-        Vec2::new(left + 22.0, top - 86.0),
-        15.0,
+        Vec2::new(left + 20.0, top - 86.0),
+        14.0,
         accent,
         Anchor::CENTER_LEFT,
     );
-    ui.text(
+    ui.wrapped(
         ch.tagline.get(l),
-        Vec2::new(left, top - 112.0),
-        14.0,
+        Vec2::new(left, top - 104.0),
+        if ch.client.is_some() { 300.0 } else { 400.0 },
+        13.0,
+        pal.text_dim,
+        Anchor::TOP_LEFT,
+    );
+    if let Some(cat) = ch.client {
+        let p = Vec2::new(-246.0, top - 78.0);
+        ui.well(p, Vec2::splat(96.0));
+        oo_kit::portrait::spawn(ui, cat, p, 92.0, 20.0);
+    }
+    let built: Vec<&Task> = content::in_chapter(ch.number).collect();
+    let solved = built.iter().filter(|t| save.campaign.is_solved(t.id)).count();
+    let stars: u32 = built.iter().map(|t| save.campaign.stars(t.id) as u32).sum();
+    let y = top - 160.0;
+    ui.button(
+        ButtonSpec::new(
+            Vec2::new(left + 58.0, y),
+            Vec2::new(116.0, 28.0),
+            t(l, "Opening", "开场对白"),
+            Act::Opening(ch.number),
+        )
+        .tone(Tone::Ghost)
+        .font(13.0),
+    );
+    ui.progress(
+        Vec2::new(left + 176.0, y - 1.0),
+        Vec2::new(80.0, 4.0),
+        solved as f32 / LEVELS_PER_CHAPTER as f32,
+        accent,
+    );
+    ui.caption(
+        format!("{solved} / {LEVELS_PER_CHAPTER}   ★ {stars}"),
+        Vec2::new(left + 226.0, y),
         pal.text_dim,
         Anchor::CENTER_LEFT,
     );
-    if let Some(cat) = ch.client {
-        let at = Vec2::new(center.x + size.x / 2.0 - 86.0, top - 74.0);
-        ui.well(at, Vec2::splat(104.0));
-        oo_kit::portrait::spawn(ui, cat, at, 100.0, 20.0);
-    }
-    let row_w = size.x - 40.0;
-    for slot in 1..=LEVELS_PER_CHAPTER {
-        let y = top - 160.0 - (slot - 1) as f32 * 52.0;
-        let found = tasks
-            .iter()
-            .enumerate()
-            .find(|(_, t)| t.chapter == ch.number && t.slot == slot);
-        let kind = kind_of_slot(slot - 1);
-        let code = format!("{}-{}", ch.number, slot);
-        let Some((i, task)) = found else {
-            ui.well(Vec2::new(center.x, y), Vec2::new(row_w, 44.0));
-            ui.rect(
-                Vec2::new(left - 12.0, y),
-                Vec2::new(3.0, 22.0),
-                mix(kind_color(kind, &pal), pal.bg, 0.7),
-                13.0,
-            );
-            ui.text(
-                code,
-                Vec2::new(left + 6.0, y),
-                14.0,
-                pal.text_faint,
-                Anchor::CENTER_LEFT,
-            );
-            ui.caption(
-                format!(
-                    "{} · {}",
-                    kind_label(kind, l),
-                    t(l, "IN RESTORATION", "修复中")
-                ),
-                Vec2::new(left + 66.0, y),
-                pal.text_faint,
-                Anchor::CENTER_LEFT,
-            );
-            continue;
-        };
-        let open = save.is_unlocked(task);
-        let tone = if Some(i) == next {
-            Tone::Primary
-        } else {
-            Tone::Secondary
-        };
-        let mut b = ButtonSpec::new(
-            Vec2::new(center.x, y),
-            Vec2::new(row_w, 44.0),
-            "",
-            Act::Open(i),
-        )
-        .tone(tone)
-        .enabled(open);
+    crate::problems::draw_hub_row(ui, v, ch.number, accent, Vec2::new(left, top - 188.0));
+}
+
+/// All sixteen chapters as a strip of small tabs, solved ones marked.
+fn draw_strip(ui: &mut Ui, shown: u8, save: &SaveData, l: Lang, at: Vec2) {
+    let pal = ui.pal;
+    let (w, pitch) = (22.0, 25.0);
+    for n in 1..=CHAPTERS {
+        let p = Vec2::new(at.x + w / 2.0 + (n - 1) as f32 * pitch, at.y);
+        let open = chapter_open(n, save);
+        let mut b = ButtonSpec::new(p, Vec2::new(w, 24.0), n.to_string(), Act::Chapter(n))
+            .tone(if n == shown { Tone::Selected } else { Tone::Ghost })
+            .font(12.0)
+            .enabled(open);
         if !open {
-            b = b.tip(format!(
-                "{} {}",
-                t(l, "Requires", "需要先完成"),
-                requirement_names(task, save, l)
-            ));
+            b = b.tip(t(l, "Finish the chapter before it first.", "先完成上一章。"));
         }
         ui.button(b);
-        let stripe = kind_color(kind, &pal);
-        ui.rect(
-            Vec2::new(left - 12.0, y),
-            Vec2::new(3.0, 22.0),
-            if open {
-                stripe
-            } else {
-                mix(stripe, pal.bg, 0.7)
-            },
-            13.0,
-        );
-        let dim = if open { pal.text_dim } else { pal.text_faint };
-        ui.text(
-            code,
-            Vec2::new(left + 6.0, y),
-            14.0,
-            dim,
-            Anchor::CENTER_LEFT,
-        );
-        ui.text(
-            task.title.get(l),
-            Vec2::new(left + 66.0, y + 8.0),
-            16.0,
-            if open { pal.text } else { pal.text_faint },
-            Anchor::CENTER_LEFT,
-        );
-        let sub = if open {
-            kind_label(kind, l)
-        } else {
-            t(l, "LOCKED", "未开放")
-        };
-        ui.caption(
-            sub,
-            Vec2::new(left + 66.0, y - 11.0),
-            if open { stripe } else { pal.text_faint },
-            Anchor::CENTER_LEFT,
-        );
-        if open {
-            ui.stars(
-                Vec2::new(center.x + row_w / 2.0 - 52.0, y),
-                save.campaign.stars(task.id),
-                9.0,
-            );
+        if crate::notes::chapter_done(n, save) {
+            ui.rect(p - Vec2::new(0.0, 10.0), Vec2::new(10.0, 2.0), pal.primary, 11.5);
         }
     }
+}
+
+/// One level of the chapter as a cell of the 2 × 4 grid.
+#[allow(clippy::too_many_arguments)]
+fn draw_level(
+    ui: &mut Ui,
+    v: &View,
+    found: Option<(usize, &Task)>,
+    chapter: u8,
+    slot: u8,
+    at: Vec2,
+    size: Vec2,
+    next: Option<usize>,
+) {
+    let pal = ui.pal;
+    let l = v.lang;
+    let save = &v.game.save;
+    let kind = kind_of_slot(slot - 1);
+    let code = format!("{chapter}-{slot}");
+    let left = at.x - size.x / 2.0;
+    let stripe = kind_color(kind, &pal);
+    let Some((i, task)) = found else {
+        ui.well(at, size);
+        ui.rect(Vec2::new(left + 8.0, at.y), Vec2::new(3.0, 22.0), mix(stripe, pal.bg, 0.7), 13.0);
+        ui.text(code, Vec2::new(left + 20.0, at.y), 14.0, pal.text_faint, Anchor::CENTER_LEFT);
+        ui.caption(
+            format!("{} · {}", kind_label(kind, l), t(l, "IN RESTORATION", "修复中")),
+            Vec2::new(left + 66.0, at.y),
+            pal.text_faint,
+            Anchor::CENTER_LEFT,
+        );
+        return;
+    };
+    let open = save.is_unlocked(task);
+    let tone = if Some(i) == next { Tone::Primary } else { Tone::Secondary };
+    let mut b = ButtonSpec::new(at, size, "", Act::Open(i)).tone(tone).enabled(open);
+    if !open {
+        b = b.tip(format!(
+            "{} {}",
+            t(l, "Requires", "需要先完成"),
+            requirement_names(task, save, l)
+        ));
+    }
+    ui.button(b);
+    ui.rect(
+        Vec2::new(left + 8.0, at.y),
+        Vec2::new(3.0, 22.0),
+        if open { stripe } else { mix(stripe, pal.bg, 0.7) },
+        13.0,
+    );
+    let dim = if open { pal.text_dim } else { pal.text_faint };
+    ui.text(code, Vec2::new(left + 20.0, at.y), 14.0, dim, Anchor::CENTER_LEFT);
+    let title = clip(task.title.get(l), if l == Lang::En { 30 } else { 15 });
+    ui.text(
+        title,
+        Vec2::new(left + 66.0, at.y + 8.0),
+        15.0,
+        if open { pal.text } else { pal.text_faint },
+        Anchor::CENTER_LEFT,
+    );
+    let sub = if open { kind_label(kind, l) } else { t(l, "LOCKED", "未开放") };
+    ui.caption(
+        sub,
+        Vec2::new(left + 66.0, at.y - 11.0),
+        if open { stripe } else { pal.text_faint },
+        Anchor::CENTER_LEFT,
+    );
+    if open {
+        ui.stars(
+            Vec2::new(at.x + size.x / 2.0 - 34.0, at.y),
+            save.campaign.stars(task.id),
+            8.0,
+        );
+    }
+}
+
+/// ORI's line and the hub's buttons. The gap between Bai Yan's notes and
+/// Title is kept for one more button.
+fn draw_bottom_row(ui: &mut Ui, v: &View, ch: &Chapter, next: Option<usize>) {
+    let pal = ui.pal;
+    let l = v.lang;
+    let save = &v.game.save;
+    let tasks = content::tasks();
     let line = match next {
         Some(i) => format!(
             "ORI · {} “{}”",
@@ -413,17 +493,61 @@ pub fn draw_hub(ui: &mut Ui, v: &View) {
         )
         .to_string(),
     };
-    ui.text(
-        line,
-        Vec2::new(-600.0, -330.0),
-        14.0,
-        pal.text_dim,
-        Anchor::CENTER_LEFT,
-    );
+    ui.text(line, Vec2::new(-620.0, -330.0), 14.0, pal.text_dim, Anchor::CENTER_LEFT);
+    // The free bench runs the newest machine solved in this chapter.
+    let lab = tasks
+        .iter()
+        .enumerate()
+        .rev()
+        .find(|(_, t)| t.chapter == ch.number && save.campaign.is_solved(t.id))
+        .map(|(i, _)| i);
+    let mut b = ButtonSpec::new(
+        Vec2::new(130.0, -330.0),
+        Vec2::new(150.0, 34.0),
+        t(l, "Free bench", "自由机台"),
+        Act::Lab(lab.unwrap_or(0)),
+    )
+    .tone(Tone::Secondary)
+    .font(14.0)
+    .enabled(lab.is_some())
+    .tip(t(
+        l,
+        "This chapter's machine with nothing to match: every op you have unlocked, the river and the Analyzer. Never scored.",
+        "这一章的机器，没有答案要对：已解锁的指令、Warp River 和分析器全开。不计分。",
+    ));
+    if lab.is_none() {
+        b = b.tip(t(l, "Solve a level in this chapter first.", "先在这一章通过一关。"));
+    }
+    ui.button(b);
     ui.button(
         ButtonSpec::new(
-            Vec2::new(560.0, -330.0),
-            Vec2::new(120.0, 34.0),
+            Vec2::new(447.0, -330.0),
+            Vec2::new(110.0, 34.0),
+            t(l, "Manual", "手册"),
+            Act::Goto(Screen::Manual),
+        )
+        .tone(Tone::Secondary)
+        .font(14.0)
+        .tip(t(
+            l,
+            "ORI's handbook: every op, machine and tool, and the concept cards you have earned.",
+            "ORI 的手册：每条指令、每台机器、每个工具，还有你拿到的洞见卡。",
+        )),
+    );
+    let ending = crate::notes::ending_open(save) && save.ending.is_none();
+    let mut b = ButtonSpec::new(
+        Vec2::new(290.0, -330.0),
+        Vec2::new(150.0, 34.0),
+        t(l, "Bai Yan's notes", "白砚译注"),
+        Act::Goto(Screen::Notes),
+    )
+    .font(14.0);
+    b = if ending { b.primary() } else { b.tone(Tone::Secondary) };
+    ui.button(b);
+    ui.button(
+        ButtonSpec::new(
+            Vec2::new(580.0, -330.0),
+            Vec2::new(100.0, 34.0),
             t(l, "Title", "标题"),
             Act::Back,
         )
@@ -440,181 +564,6 @@ fn clip(s: &str, n: usize) -> String {
     let mut out: String = s.chars().take(n.saturating_sub(1)).collect();
     out.push('…');
     out
-}
-
-/// The hub's left rail: six machines, with the shown machine's chapters
-/// unfolded under its header.
-fn draw_rail(ui: &mut Ui, shown: u8, save: &SaveData, l: Lang) {
-    let pal = ui.pal;
-    let (x, w) = (-470.0, 300.0);
-    let current = content::machine_of(shown);
-    let mut y = 272.0;
-    for (mi, m) in content::machines().iter().enumerate() {
-        let chapters = (m.first..=m.last).map(content::chapter);
-        let built: Vec<&Task> = (m.first..=m.last).flat_map(content::in_chapter).collect();
-        let solved = built
-            .iter()
-            .filter(|t| save.campaign.is_solved(t.id))
-            .count();
-        let total = (m.last - m.first + 1) as usize * LEVELS_PER_CHAPTER as usize;
-        let open = chapter_open(m.first, save);
-        let mut b = ButtonSpec::new(
-            Vec2::new(x, y),
-            Vec2::new(w, 46.0),
-            "",
-            Act::Chapter(m.first),
-        )
-        .tone(if mi == current {
-            Tone::Selected
-        } else {
-            Tone::Secondary
-        })
-        .enabled(open);
-        if !open {
-            let tip = if built.is_empty() {
-                t(
-                    l,
-                    "This machine is still being restored.",
-                    "这台机器还在修复中。",
-                )
-            } else {
-                t(l, "Finish the chapter before it first.", "先完成上一章。")
-            };
-            b = b.tip(tip.to_string());
-        }
-        ui.button(b);
-        let left = x - w / 2.0;
-        let tone = if open { pal.text } else { pal.text_faint };
-        ui.text(
-            m.name.get(l),
-            Vec2::new(left + 16.0, y + 8.0),
-            16.0,
-            tone,
-            Anchor::CENTER_LEFT,
-        );
-        let range = if m.first == m.last {
-            m.first.to_string()
-        } else {
-            format!("{}–{}", m.first, m.last)
-        };
-        ui.caption(
-            chapter_word_range(&range, l),
-            Vec2::new(left + 16.0, y - 11.0),
-            pal.text_faint,
-            Anchor::CENTER_LEFT,
-        );
-        ui.progress(
-            Vec2::new(x + w / 2.0 - 54.0, y - 11.0),
-            Vec2::new(76.0, 4.0),
-            solved as f32 / total as f32,
-            pal.primary,
-        );
-        ui.caption(
-            format!("{solved} / {total}"),
-            Vec2::new(x + w / 2.0 - 16.0, y + 9.0),
-            pal.text_dim,
-            Anchor::CENTER_RIGHT,
-        );
-        y -= 52.0;
-        if mi == current {
-            for ch in chapters {
-                draw_chapter_row(
-                    ui,
-                    ch,
-                    Vec2::new(x + 12.0, y),
-                    w - 24.0,
-                    ch.number == shown,
-                    save,
-                    l,
-                );
-                y -= 50.0;
-            }
-            y -= 4.0;
-        }
-    }
-}
-
-/// `CH 1–4`, `第 1–4 章`, `1–4장`.
-fn chapter_word_range(range: &str, l: Lang) -> String {
-    match l {
-        Lang::En => format!("CH {range}"),
-        Lang::Zh | Lang::Ja => format!("第 {range} 章"),
-        Lang::Ko => format!("{range}장"),
-    }
-}
-
-/// One chapter under its machine: number, title, client and progress.
-fn draw_chapter_row(
-    ui: &mut Ui,
-    ch: &Chapter,
-    at: Vec2,
-    w: f32,
-    shown: bool,
-    save: &SaveData,
-    l: Lang,
-) {
-    let pal = ui.pal;
-    let open = chapter_open(ch.number, save);
-    let tasks: Vec<&Task> = content::in_chapter(ch.number).collect();
-    let solved = tasks
-        .iter()
-        .filter(|t| save.campaign.is_solved(t.id))
-        .count();
-    let stars: u32 = tasks.iter().map(|t| save.campaign.stars(t.id) as u32).sum();
-    let accent = chapter_accent(ch, &pal);
-    let mut b = ButtonSpec::new(at, Vec2::new(w, 44.0), "", Act::Chapter(ch.number))
-        .tone(if shown {
-            Tone::Selected
-        } else {
-            Tone::Secondary
-        })
-        .enabled(open);
-    if !open {
-        let tip = if tasks.is_empty() {
-            t(l, "Not built yet.", "还没造好。")
-        } else {
-            t(l, "Finish the chapter before it first.", "先完成上一章。")
-        };
-        b = b.tip(tip.to_string());
-    }
-    ui.button(b);
-    let left = at.x - w / 2.0;
-    ui.text(
-        ch.number.to_string(),
-        Vec2::new(left + 18.0, at.y),
-        20.0,
-        if open { accent } else { pal.text_faint },
-        Anchor::CENTER,
-    );
-    let (en, other) = (26, 14);
-    let title = clip(ch.title.get(l), if l == Lang::En { en } else { other });
-    ui.text(
-        title,
-        Vec2::new(left + 38.0, at.y + 8.0),
-        14.0,
-        if open { pal.text } else { pal.text_faint },
-        Anchor::CENTER_LEFT,
-    );
-    ui.caption(
-        ch.client_name().get(l),
-        Vec2::new(left + 38.0, at.y - 11.0),
-        if open { accent } else { pal.text_faint },
-        Anchor::CENTER_LEFT,
-    );
-    if open {
-        ui.caption(
-            format!("★ {stars}"),
-            Vec2::new(at.x + w / 2.0 - 12.0, at.y + 9.0),
-            pal.secondary,
-            Anchor::CENTER_RIGHT,
-        );
-        ui.progress(
-            Vec2::new(at.x + w / 2.0 - 48.0, at.y - 11.0),
-            Vec2::new(60.0, 4.0),
-            solved as f32 / tasks.len().max(1) as f32,
-            accent,
-        );
-    }
 }
 
 /// Goal rows: the hard limit (if any) then the two star goals.

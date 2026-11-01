@@ -1,4 +1,4 @@
-use super::draw::{TAB_Y, cell_name};
+use super::draw::{TAB_Y, bench_tabs, cell_name, verdict_x};
 use super::*;
 
 /// One line on the tab row: build error, running, or the verdict.
@@ -6,7 +6,7 @@ pub(super) fn draw_verdict(ui: &mut Ui, v: &View) {
     let pal = ui.pal;
     let l = v.lang;
     let s = v.s;
-    let at = Vec2::new(-56.0, TAB_Y);
+    let at = Vec2::new(verdict_x(bench_tabs(s).len()), TAB_Y);
     if let Some(e) = &s.error {
         ui.dot(at, 9.0, pal.bad, 12.0);
         ui.text(
@@ -14,6 +14,16 @@ pub(super) fn draw_verdict(ui: &mut Ui, v: &View) {
             at + Vec2::new(14.0, 0.0),
             14.0,
             pal.bad,
+            Anchor::CENTER_LEFT,
+        );
+        return;
+    }
+    if s.grading.is_some() {
+        ui.text(
+            t(l, "Running every case…", "正在运行所有用例……"),
+            at,
+            14.0,
+            pal.text_dim,
             Anchor::CENTER_LEFT,
         );
         return;
@@ -51,16 +61,37 @@ pub(super) fn draw_verdict(ui: &mut Ui, v: &View) {
         );
     }
     if !s.play.revealed {
-        let msg = format!(
+        let mut msg = format!(
             "{} {} / {}…",
             t(l, "Replaying case", "正在回放用例"),
             s.case + 1,
             rep.public
         );
+        if s.lab && s.lab_state.kernels.len() > 1 {
+            let st = &s.lab_state;
+            msg = format!("{msg} {} {} / {}", t(l, "Kernel", "内核"), st.cur + 1, st.kernels.len());
+        }
         ui.text(msg, at, 14.0, pal.text_dim, Anchor::CENTER_LEFT);
         return;
     }
-    let view = s.task().view;
+    if s.lab {
+        let mut msg = format!(
+            "{} {} {}",
+            t(l, "Free bench, nothing to match. Ran in", "自由机台，没有答案要对。用时"),
+            crate::lab::frame_cycles(s).unwrap_or(rep.measure.get(ooc_core::task::Metric::Cycles)),
+            t(l, "cycles.", "周期。"),
+        );
+        if let Some(k) = crate::lab::panel::kernel_note(s, l) {
+            msg = format!("{msg} {k}");
+        }
+        ui.text(msg, at, 14.0, pal.secondary, Anchor::CENTER_LEFT);
+        return;
+    }
+    if let Some(k) = s.open
+        && rep.passed()
+    {
+        return crate::problems::draw_verdict(ui, v, k, at);
+    }
     let (msg, color) = match rep.verdict {
         Verdict::Wrong { case, .. } | Verdict::Timeout { case } if rep.is_hidden(case) => (
             format!(
@@ -95,7 +126,7 @@ pub(super) fn draw_verdict(ui: &mut Ui, v: &View) {
                 "× {} {} · {} · {} {got}, {} {want}",
                 t(l, "Case", "用例"),
                 case + 1,
-                cell_name(view, cell, l),
+                cell_name(s.task(), cell, l),
                 t(l, "got", "得到"),
                 t(l, "want", "应为")
             ),

@@ -198,6 +198,10 @@ fn draw_row(ui: &mut Ui, v: &View, row: &Row, rows: &[Row], y: f32, first: u32) 
     for b in row.beat + 1..lands {
         if let Some(x) = col(b) {
             ui.chip(Vec2::new(x, y), cell, pal.primary.with_alpha(0.22), 8.0);
+            // Teaching mode (free bench): beats until the result lands.
+            if let Some(n) = crate::lab::panel::beats_left(v.s, b, lands) {
+                ui.text(n, Vec2::new(x, y), 11.0, pal.text_dim, Anchor::CENTER);
+            }
         }
     }
     // A landing someone read too early is outlined in red.

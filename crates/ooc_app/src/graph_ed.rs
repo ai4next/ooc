@@ -424,16 +424,20 @@ pub fn draw(ui: &mut Ui, v: &View) {
         pal.text_faint,
         Anchor::CENTER_LEFT,
     );
+    // The row narrows when it would run into the Blueprint | Microcode switch.
+    let parts = kinds.iter().filter(|k| **k != NodeKind::Out).count();
+    // The last button must end before the switch's left edge (x = 68).
+    let pitch = (604.0 / (parts as f32 - 0.5).max(1.0)).min(60.0);
     for (i, k) in kinds
         .iter()
         .copied()
         .filter(|k| *k != NodeKind::Out)
         .enumerate()
     {
-        let p = Vec2::new(-540.0 + i as f32 * 60.0, 286.0);
+        let p = Vec2::new(-540.0 + i as f32 * pitch, 286.0);
         ui.button(
-            ButtonSpec::new(p, Vec2::new(56.0, 24.0), k.label(), Act::AddNode(k))
-                .font(12.0)
+            ButtonSpec::new(p, Vec2::new(pitch - 4.0, 24.0), k.label(), Act::AddNode(k))
+                .font(if pitch < 48.0 { 10.0 } else if pitch < 58.0 { 11.0 } else { 12.0 })
                 .tone(Tone::Ghost)
                 .tip(kind_tip(k, l)),
         );

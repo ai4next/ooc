@@ -7,7 +7,7 @@ use oo_kit::audio::Cue;
 use oo_kit::ui::{ButtonSpec, Tone, Ui};
 use ooc_core::edit::{Doc, Operand, operands, set_operand};
 use ooc_core::isa::{Alu, BASE_REGS, Cmp, Cvt, MAX_LOOP, OpKind, PREDS, Program, Special, Src};
-use ooc_core::task::{Editor, Solution};
+use ooc_core::task::Solution;
 
 use crate::state::{Act, Sel, Session, t};
 use crate::{Ctx, View};
@@ -218,6 +218,15 @@ pub fn act(cx: &mut Ctx, a: Act) {
                 show_line(&mut cx.s, &d, j);
             }
         }
+        Act::UseSeal(n) => {
+            let after = line.or(d.code.len().checked_sub(1));
+            if let Some(at) = crate::seals::insert(&mut d, after, n) {
+                commit(cx, &d);
+                cx.s.sel = Sel::Line(at);
+                show_line(&mut cx.s, &d, at);
+                cx.cues.play(Cue::Place);
+            }
+        }
         Act::Scroll(dy) => {
             let max = rows(&d).len().saturating_sub(ROWS) as i32;
             cx.s.scroll = (cx.s.scroll as i32 + dy).clamp(0, max) as usize;
@@ -226,7 +235,7 @@ pub fn act(cx: &mut Ctx, a: Act) {
     }
 }
 
-fn op_color(ui: &Ui, k: OpKind) -> Color {
+pub fn op_color(ui: &Ui, k: OpKind) -> Color {
     let pal = ui.pal;
     match k {
         OpKind::If | OpKind::Else | OpKind::EndIf | OpKind::Loop | OpKind::EndLoop => pal.tertiary,
@@ -253,9 +262,7 @@ pub fn draw(ui: &mut Ui, v: &View) {
     let pal = ui.pal;
     let l = v.lang;
     let s = v.s;
-    let Editor::Code(ops) = s.task().editor else {
-        return;
-    };
+    let ops: &[OpKind] = &crate::blueprint::code_ops(s.task());
     let Some(d) = doc(s) else {
         ui.text(
             t(
@@ -280,7 +287,7 @@ pub fn draw(ui: &mut Ui, v: &View) {
         format!(
             "{}  {} / {}",
             t(l, "PROGRAM", "程序"),
-            d.code.len(),
+            crate::seals::doc_len(v, &d),
             v.s.task().profile.max_program()
         ),
         Vec2::new(-612.0, 288.0),
@@ -344,15 +351,15 @@ pub fn draw(ui: &mut Ui, v: &View) {
     if ops.contains(&OpKind::Lds) {
         ui.caption(
             ".SMEM",
-            Vec2::new(-150.0, 288.0),
+            Vec2::new(-152.0, 288.0),
             pal.text_faint,
             Anchor::CENTER_LEFT,
         );
         let buttons: [(f32, &str, Act); 4] = [
-            (-78.0, "÷2", Act::SmemScale(false)),
-            (-48.0, "−", Act::Smem(-1)),
-            (28.0, "+", Act::Smem(1)),
-            (58.0, "×2", Act::SmemScale(true)),
+            (-62.0, "÷2", Act::SmemScale(false)),
+            (-34.0, "−", Act::Smem(-1)),
+            (38.0, "+", Act::Smem(1)),
+            (66.0, "×2", Act::SmemScale(true)),
         ];
         for (x, label, act) in buttons {
             ui.button(
@@ -367,7 +374,7 @@ pub fn draw(ui: &mut Ui, v: &View) {
         }
         ui.text(
             d.smem.map_or("—".to_string(), |n| n.to_string()),
-            Vec2::new(-10.0, 288.0),
+            Vec2::new(2.0, 288.0),
             15.0,
             pal.secondary,
             Anchor::CENTER,
@@ -424,6 +431,10 @@ pub fn draw(ui: &mut Ui, v: &View) {
             pal.text_faint,
             Anchor::CENTER_LEFT,
         );
+        if let Some(name) = d.use_at(i) {
+            crate::seals::use_row(ui, v, i, name, x, y, selected == Some(i));
+            continue;
+        }
         let kind = ins.kind();
         let c = op_color(ui, kind);
         let mw = 62.0;
@@ -487,7 +498,6 @@ pub fn draw(ui: &mut Ui, v: &View) {
             6.1,
         );
     }
-    draw_palette(ui, ops, l);
     draw_side(ui, v, &d, ops, probe);
 }
 
@@ -529,40 +539,56 @@ fn probe_values(s: &Session) -> Option<ooc_core::grade::Probe> {
     ooc_core::grade::probe(s.task(), &rep.program, case, th)
 }
 
-fn draw_palette(ui: &mut Ui, ops: &[OpKind], l: oo_base::Lang) {
+/// Rows of the instruction palette are this far apart.
+const PAL_PITCH: f32 = 25.0;
+
+/// Appends-an-instruction buttons; returns the y just below the last row.
+fn draw_palette(ui: &mut Ui, ops: &[OpKind], l: oo_base::Lang, caption: bool) -> f32 {
     let pal = ui.pal;
-    ui.caption(
-        t(l, "ADD AN INSTRUCTION", "添加指令"),
-        Vec2::new(PX - 158.0, 288.0),
-        pal.text_faint,
-        Anchor::CENTER_LEFT,
-    );
+    if caption {
+        ui.caption(
+            t(l, "ADD AN INSTRUCTION", "添加指令"),
+            Vec2::new(PX - 158.0, 288.0),
+            pal.text_faint,
+            Anchor::CENTER_LEFT,
+        );
+    }
     let list: Vec<OpKind> = ops
         .iter()
         .copied()
         .filter(|k| !matches!(k, OpKind::EndIf | OpKind::EndLoop))
         .collect();
-    // Five rows fit above the side panel; wider levels get a fifth column.
-    let cols = if list.len() > 20 { 5 } else { 4 };
+    // Wider sets get more columns so the side panel keeps its room.
+    let cols = match list.len() {
+        0..=16 => 4,
+        17..=30 => 5,
+        _ => 6,
+    };
+    let font = if cols > 5 { 11.0 } else { 12.0 };
     let pitch = 320.0 / cols as f32;
     let w = pitch - 4.0;
+    let rows = list.len().div_ceil(cols);
     for (n, k) in list.into_iter().enumerate() {
         let (c, r) = ((n % cols) as f32, (n / cols) as f32);
-        let p = Vec2::new(PX - 160.0 + pitch / 2.0 + c * pitch, 262.0 - r * 27.0);
+        let p = Vec2::new(
+            PX - 160.0 + pitch / 2.0 + c * pitch,
+            262.0 - r * PAL_PITCH,
+        );
         ui.button(
-            ButtonSpec::new(p, Vec2::new(w, 24.0), k.mnemonic(), Act::AddOp(k))
-                .font(12.0)
+            ButtonSpec::new(p, Vec2::new(w, 22.0), k.mnemonic(), Act::AddOp(k))
+                .font(font)
                 .tone(Tone::Ghost)
                 .tip(op_tip(k, l)),
         );
         let color = op_color(ui, k);
         ui.rect(
             p + Vec2::new(3.0 - w / 2.0, 0.0),
-            Vec2::new(3.0, 14.0),
+            Vec2::new(3.0, 13.0),
             color,
             11.5,
         );
     }
+    262.0 - rows as f32 * PAL_PITCH + PAL_PITCH / 2.0
 }
 
 fn op_tip(k: OpKind, l: oo_base::Lang) -> String {
@@ -879,8 +905,15 @@ fn draw_side(
 ) {
     let pal = ui.pal;
     let l = v.lang;
-    let top = 104.0;
-    let head = Vec2::new(PX - 158.0, 128.0);
+    // An operand picker takes the palette's place; otherwise the side panel
+    // starts under however many rows the palette needed.
+    let (head, top) = if matches!(v.s.sel, Sel::Operand(..)) {
+        (Vec2::new(PX - 158.0, 262.0), 236.0)
+    } else {
+        let bottom = draw_palette(ui, ops, l, !ops.contains(&OpKind::Lds));
+        let bottom = crate::seals::palette(ui, v, bottom, PX);
+        (Vec2::new(PX - 158.0, bottom - 14.0), bottom - 34.0)
+    };
     let (line, k) = match v.s.sel {
         Sel::Operand(i, k) => (i, Some(k)),
         Sel::Line(i) => (i, None),
@@ -906,19 +939,11 @@ fn draw_side(
             pal.text_faint,
             Anchor::CENTER_LEFT,
         );
-        ui.wrapped(
-            op_tip(ins.kind(), l),
-            Vec2::new(PX - 158.0, top + 6.0),
-            310.0,
-            13.0,
-            pal.text_dim,
-            Anchor::TOP_LEFT,
-        );
-        let y = top - 76.0;
+        let y = top - 6.0;
         ui.button(
             ButtonSpec::new(
                 Vec2::new(PX - 112.0, y),
-                Vec2::new(86.0, 26.0),
+                Vec2::new(86.0, 24.0),
                 t(l, "↑ Up", "↑ 上移"),
                 Act::MoveLine(true),
             )
@@ -927,35 +952,38 @@ fn draw_side(
         ui.button(
             ButtonSpec::new(
                 Vec2::new(PX - 18.0, y),
-                Vec2::new(86.0, 26.0),
+                Vec2::new(86.0, 24.0),
                 t(l, "↓ Down", "↓ 下移"),
                 Act::MoveLine(false),
             )
             .font(13.0),
         );
-        ui.button(
-            ButtonSpec::new(
-                Vec2::new(PX + 90.0, y),
-                Vec2::new(110.0, 26.0),
-                t(l, "Delete", "删除"),
-                Act::DeleteSel,
-            )
-            .font(13.0),
-        );
+        let mut del = ButtonSpec::new(
+            Vec2::new(PX + 90.0, y),
+            Vec2::new(110.0, 24.0),
+            t(l, "Delete", "删除"),
+            Act::DeleteSel,
+        )
+        .font(13.0);
         if ins.opens() || ins.closes() {
-            ui.wrapped(
-                t(
-                    l,
-                    "Deleting a block keeps its body.",
-                    "删除一个块会保留里面的内容。",
-                ),
-                Vec2::new(PX - 158.0, y - 22.0),
-                310.0,
-                12.0,
-                pal.text_faint,
-                Anchor::TOP_LEFT,
-            );
+            del = del.tip(t(
+                l,
+                "Deleting a block keeps its body.",
+                "删除一个块会保留里面的内容。",
+            ));
         }
+        ui.button(del);
+        ui.wrapped(
+            match d.use_at(line) {
+                Some(name) => crate::seals::card(v, name),
+                None => op_tip(ins.kind(), l),
+            },
+            Vec2::new(PX - 158.0, y - 20.0),
+            310.0,
+            12.0,
+            pal.text_dim,
+            Anchor::TOP_LEFT,
+        );
         return;
     };
     let Some(cur) = operands(ins).get(k).copied() else {
@@ -973,8 +1001,7 @@ fn draw_side(
         Anchor::CENTER_LEFT,
     );
     let nreg = v.s.task().profile.max_regs();
-    let rcols = if nreg > BASE_REGS { 6 } else { 4 };
-    let sp_base = (nreg as usize).div_ceil(6) * 6 + 6;
+    let rcols = if nreg > BASE_REGS { 8 } else { 4 };
     match cur {
         Operand::Reg(r) => {
             for i in 0..nreg {
@@ -1046,48 +1073,27 @@ fn draw_side(
                     src == Src::Reg(i),
                 );
             }
-            for (i, sp) in Special::ALL.into_iter().enumerate() {
-                pick(
-                    ui,
-                    sp_base + i,
-                    6,
-                    top - 2.0,
-                    sp.name().into(),
-                    Operand::Src(Src::Sp(sp)),
-                    src == Src::Sp(sp),
-                );
-            }
             let prof = v.s.task().profile;
-            let vault = prof.vault;
             let grid_n = if prof.atlas { Special::GRID.len() } else { 0 };
-            for (i, sp) in Special::GRID.into_iter().take(grid_n).enumerate() {
+            let clock = prof.vault.then_some(Special::Clock);
+            let specials: Vec<Special> = Special::ALL
+                .into_iter()
+                .chain(Special::GRID.into_iter().take(grid_n))
+                .chain(clock)
+                .collect();
+            let sp_top = top - (nreg as usize).div_ceil(rcols) as f32 * 24.0 - 6.0;
+            for (i, sp) in specials.iter().enumerate() {
                 pick(
                     ui,
-                    sp_base + 6 + i,
+                    i,
                     6,
-                    top - 2.0,
+                    sp_top,
                     sp.name().into(),
-                    Operand::Src(Src::Sp(sp)),
-                    src == Src::Sp(sp),
+                    Operand::Src(Src::Sp(*sp)),
+                    src == Src::Sp(*sp),
                 );
             }
-            if vault {
-                pick(
-                    ui,
-                    sp_base + 6 + grid_n,
-                    6,
-                    top - 2.0,
-                    Special::Clock.name().into(),
-                    Operand::Src(Src::Sp(Special::Clock)),
-                    src == Src::Sp(Special::Clock),
-                );
-            }
-            let rows = if vault {
-                (sp_base + 6 + grid_n) / 6 + 1
-            } else {
-                sp_base / 6 + 1
-            };
-            let y = top - rows as f32 * 24.0 - 4.0;
+            let y = sp_top - specials.len().div_ceil(6) as f32 * 24.0 - 4.0;
             match src {
                 Src::Imm(v) => bumps(ui, y, v.to_string()),
                 _ => {

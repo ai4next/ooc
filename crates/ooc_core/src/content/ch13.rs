@@ -2251,7 +2251,7 @@ mod tests {
         let c = (audit_bench().cases)().remove(0);
         let ex = audit_expect(&c);
         let mut swaps = 0;
-        for t in 0..AUDIT_TASKS {
+        for (t, &e) in ex.iter().enumerate().take(AUDIT_TASKS) {
             let base = AUDIT_HEAD + t * AUDIT_WORDS;
             let want = mat64(&c.rom[base..base + 4096], &c.rom[base + 4096..base + 8192]);
             let got = &c.rom[base + 8192..base + 12288];
@@ -2262,7 +2262,7 @@ mod tests {
             };
             if want != got && sums(&want) == sums(got) {
                 swaps += 1;
-                assert_eq!(ex[t], Some(0));
+                assert_eq!(e, Some(0));
             }
         }
         assert!(

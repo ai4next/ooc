@@ -15,6 +15,7 @@ pub(super) fn draw_river(ui: &mut Ui, v: &View) {
         Transform::from_xyz(at.x, at.y, 7.0),
         oo_kit::ui::ScreenEntity,
     ));
+    crate::lab::panel::spawn_marks(ui, s);
     let left = at.x - size.x / 2.0;
     let top = at.y + size.y / 2.0;
     ui.caption(
@@ -46,16 +47,19 @@ pub(super) fn draw_river(ui: &mut Ui, v: &View) {
             pal.warn,
             Anchor::CENTER_LEFT,
         ),
-        None => ui.caption(
-            t(
-                l,
-                "EACH COLUMN IS ONE WARP-INSTRUCTION · NEWEST AT THE RIGHT",
-                "每一列是一条 warp 指令 · 最新的在右边",
+        None => match crate::lab::panel::river_caption(s, l) {
+            Some(c) => ui.caption(c, Vec2::new(left, top + 14.0), pal.secondary, Anchor::CENTER_LEFT),
+            None => ui.caption(
+                t(
+                    l,
+                    "EACH COLUMN IS ONE WARP-INSTRUCTION · NEWEST AT THE RIGHT",
+                    "每一列是一条 warp 指令 · 最新的在右边",
+                ),
+                Vec2::new(left, top + 14.0),
+                pal.text_faint,
+                Anchor::CENTER_LEFT,
             ),
-            Vec2::new(left, top + 14.0),
-            pal.text_faint,
-            Anchor::CENTER_LEFT,
-        ),
+        },
     };
     let legend = [
         (
@@ -104,6 +108,7 @@ pub(super) fn draw_river(ui: &mut Ui, v: &View) {
         Anchor::CENTER_LEFT,
     );
     ui.commands.entity(e).insert(river::RiverStat(1));
+    crate::seals::draw_river(ui, v);
     let Some(rep) = &s.report else {
         let help = t(
             l,
@@ -121,7 +126,7 @@ pub(super) fn draw_river(ui: &mut Ui, v: &View) {
         return;
     };
     let run = &rep.runs[s.case.min(rep.runs.len() - 1)].run;
-    let util = run.stats.utilization();
+    let util = run.utilization();
     ui.caption(
         t(l, "THIS CASE", "本用例"),
         Vec2::new(x, -208.0),

@@ -242,6 +242,9 @@ pub struct Doc {
     pub smem: Option<u16>,
     /// `.block N`: threads per block.
     pub block: Option<u16>,
+    /// `USE name` lines, parallel to `code`; their `code` entry is a NOP
+    /// placeholder.
+    pub uses: Vec<Option<String>>,
 }
 
 /// Bilingual notes are written `english | 中文`; several comment lines that
@@ -299,8 +302,14 @@ impl Doc {
                 Some(i) => (&raw[..i], Some(raw[i + 1..].trim())),
                 None => (raw, None),
             };
-            let ins =
-                crate::asm::parse_line(body).map_err(|kind| crate::asm::AsmError { line, kind })?;
+            let used = crate::seal::use_of(body)
+                .transpose()
+                .map_err(|kind| crate::asm::AsmError { line, kind })?;
+            let ins = match used {
+                Some(_) => Some(Instr::Nop),
+                None => crate::asm::parse_line(body)
+                    .map_err(|kind| crate::asm::AsmError { line, kind })?,
+            };
             if let Some(n) = note.filter(|n| !n.is_empty()) {
                 pending.push(n.to_string());
             }
@@ -309,7 +318,11 @@ impl Doc {
                 doc.notes
                     .push((!pending.is_empty()).then(|| join_notes(&pending)));
                 pending.clear();
+                doc.uses.push(used);
             }
+        }
+        if doc.uses.iter().all(Option::is_none) {
+            doc.uses.clear();
         }
         Ok(doc)
     }
@@ -332,9 +345,25 @@ impl Doc {
             if let Some(Some(n)) = self.notes.get(i) {
                 out.push_str(&format!("{pad}; {n}\n"));
             }
-            out.push_str(&format!("{pad}{ins}\n"));
+            match self.use_at(i) {
+                Some(name) => out.push_str(&format!("{pad}USE {name}\n")),
+                None => out.push_str(&format!("{pad}{ins}\n")),
+            }
         }
         out
+    }
+
+    /// The seal a line uses, if it is a `USE` line.
+    pub fn use_at(&self, line: usize) -> Option<&str> {
+        self.uses.get(line)?.as_deref()
+    }
+
+    /// Inserts `USE name` after line `after` (or at the top). Returns its index.
+    pub fn insert_use(&mut self, after: Option<usize>, name: &str) -> usize {
+        let at = self.insert(after, OpKind::Nop);
+        self.uses.resize(self.code.len(), None);
+        self.uses[at] = Some(name.to_string());
+        at
     }
 
     pub fn insert(&mut self, after: Option<usize>, kind: OpKind) -> usize {
@@ -342,6 +371,9 @@ impl Doc {
         let at = insert(&mut self.code, after, kind);
         for _ in before..self.code.len() {
             self.notes.insert(at.min(self.notes.len()), None);
+            if !self.uses.is_empty() {
+                self.uses.insert(at.min(self.uses.len()), None);
+            }
         }
         at
     }
@@ -352,6 +384,9 @@ impl Doc {
             self.code.remove(l);
             if l < self.notes.len() {
                 self.notes.remove(l);
+            }
+            if l < self.uses.len() {
+                self.uses.remove(l);
             }
         }
         lines.len()
@@ -366,6 +401,10 @@ impl Doc {
         self.code.swap(line, other);
         self.notes.resize(self.code.len(), None);
         self.notes.swap(line, other);
+        if !self.uses.is_empty() {
+            self.uses.resize(self.code.len(), None);
+            self.uses.swap(line, other);
+        }
         Some(other)
     }
 }

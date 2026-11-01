@@ -1,4 +1,5 @@
-//! Chapter 12 · Atlas: occupancy, spills, DMA and the fence. Client: Yinpo, at the wind tower.
+//! Chapter 12 · Atlas: occupancy, spills, DMA and the fence. Client: Ali, whose camp needs
+//! sixty-four regional sand-wind maps at once.
 
 use oo_base::Tr;
 
@@ -106,8 +107,8 @@ fn occupancy() -> Task {
     Task {
         title: Tr::new("Packed Full", "占满"),
         brief: Tr::new(
-            "Yinpo's wind tower reads the gale on eight stacked pressure planes. rom[0] is n, rom[1] is the stride between the planes, and the readings start at rom[32]: plane k, position i lives at rom[32 + i + k·stride].\nFor every position i < n, out[i] is the sum of its eight readings, one from each plane.\nThe old kernel is right, but each thread hoards registers and the SM can keep only a few warps in flight. Make it fit more of them. Launched as blocks of 64 threads.",
-            "银婆的风塔把风压读在八层叠起的压力板上。rom[0] 是 n，rom[1] 是层与层之间的间隔 stride，读数从 rom[32] 开始：第 k 层第 i 个位置在 rom[32 + i + k·stride]。\n对每个位置 i < n，out[i] 是它八层读数之和。\n旧内核结果是对的，可每个线程都囤着寄存器，一个 SM 里同时能留住的 warp 很少。让它能容下更多。按每块 64 个线程发射。",
+            "Ali's camp logs the wind over the dunes on eight stacked pressure planes. rom[0] is n, rom[1] is the stride between the planes, and the readings start at rom[32]: plane k, position i lives at rom[32 + i + k·stride].\nFor every position i < n, out[i] is the sum of its eight readings, one from each plane.\nThe old kernel is right, but each thread hoards registers and the SM can keep only a few warps in flight. Make it fit more of them. Launched as blocks of 64 threads.",
+            "阿砾的营地把沙丘上的风压记在八层叠起的压力板上。rom[0] 是 n，rom[1] 是层与层之间的间隔 stride，读数从 rom[32] 开始：第 k 层第 i 个位置在 rom[32 + i + k·stride]。\n对每个位置 i < n，out[i] 是它八层读数之和。\n旧内核结果是对的，可每个线程都囤着寄存器，一个 SM 里同时能留住的 warp 很少。让它能容下更多。按每块 64 个线程发射。",
         ),
         cases: || {
             vec![
@@ -304,8 +305,8 @@ fn smem_budget() -> Task {
     Task {
         title: Tr::new("Shared Budget", "共享内存账"),
         brief: Tr::new(
-            "Yinpo wants the wind smoothed. rom[0] is n, rom[1] is the radius R (4 or 8), and the n gale readings follow from rom[32]. Anything outside the list counts as 0.\nFor every position i < n, out[i] is the sum of the readings from i - R to i + R. Blocks have 256 threads; cells past n must stay 0.\nThe old kernel stages each block's readings in shared memory, and the answers are right, but it reserves a huge slab per block. The SM can only seat the blocks whose slabs fit in its 8192 words.",
-            "银婆想把风读数磨平。rom[0] 是 n，rom[1] 是半径 R（4 或 8），n 个风读数从 rom[32] 开始。列表之外的位置按 0 算。\n对每个位置 i < n，out[i] 是从 i - R 到 i + R 的读数之和。每块 256 个线程；n 之后的格子必须保持 0。\n旧内核把每块的读数先放进共享内存，答案是对的，可每块都预订了一大块地方。SM 只能安排下“地方加起来不超过 8192 个字”的那些块。",
+            "Ali wants the wind smoothed before it goes on the maps. rom[0] is n, rom[1] is the radius R (4 or 8), and the n gale readings follow from rom[32]. Anything outside the list counts as 0.\nFor every position i < n, out[i] is the sum of the readings from i - R to i + R. Blocks have 256 threads; cells past n must stay 0.\nThe old kernel stages each block's readings in shared memory, and the answers are right, but it reserves a huge slab per block. The SM can only seat the blocks whose slabs fit in its 8192 words.",
+            "阿砾想先把风读数磨平，再画上图。rom[0] 是 n，rom[1] 是半径 R（4 或 8），n 个风读数从 rom[32] 开始。列表之外的位置按 0 算。\n对每个位置 i < n，out[i] 是从 i - R 到 i + R 的读数之和。每块 256 个线程；n 之后的格子必须保持 0。\n旧内核把每块的读数先放进共享内存，答案是对的，可每块都预订了一大块地方。SM 只能安排下“地方加起来不超过 8192 个字”的那些块。",
         ),
         cases: || {
             vec![
@@ -490,8 +491,8 @@ fn scoreboard() -> Task {
     Task {
         title: Tr::new("Ask First, Wait Once", "先问再等"),
         brief: Tr::new(
-            "At each position the wind tower has pairs of sensors: pressure and area, tension and length. rom[0] is n, rom[1] the stride between consecutive arrays, rom[2] the number of pairs P (2 or 3). Array k starts at rom[32 + k·stride]; arrays 2j and 2j+1 form pair j.\nFor every position i < n: out[i] = a₀[i]·a₁[i] + a₂[i]·a₃[i] (+ a₄[i]·a₅[i] when P is 3). Blocks have 64 threads.\nThe old kernel asks for one pair, waits for it, then asks for the next. Yinpo says the tower spends its life waiting.",
-            "风塔每个位置上有几对传感器：压强和面积，张力和长度。rom[0] 是 n，rom[1] 是相邻两个数组的间隔，rom[2] 是对数 P（2 或 3）。第 k 个数组从 rom[32 + k·stride] 开始；数组 2j 与 2j+1 组成第 j 对。\n对每个位置 i < n：out[i] = a₀[i]·a₁[i] + a₂[i]·a₃[i]（P 为 3 时再加 a₄[i]·a₅[i]）。每块 64 个线程。\n旧内核问一对、等一对，再问下一对。银婆说风塔一辈子都花在等上了。",
+            "At each position the camp's wind posts have pairs of sensors: pressure and area, tension and length. rom[0] is n, rom[1] the stride between consecutive arrays, rom[2] the number of pairs P (2 or 3). Array k starts at rom[32 + k·stride]; arrays 2j and 2j+1 form pair j.\nFor every position i < n: out[i] = a₀[i]·a₁[i] + a₂[i]·a₃[i] (+ a₄[i]·a₅[i] when P is 3). Blocks have 64 threads.\nThe old kernel asks for one pair, waits for it, then asks for the next. Ali says the camp spends its days waiting.",
+            "营地的测风桩在每个位置上有几对传感器：压强和面积，张力和长度。rom[0] 是 n，rom[1] 是相邻两个数组的间隔，rom[2] 是对数 P（2 或 3）。第 k 个数组从 rom[32 + k·stride] 开始；数组 2j 与 2j+1 组成第 j 对。\n对每个位置 i < n：out[i] = a₀[i]·a₁[i] + a₂[i]·a₃[i]（P 为 3 时再加 a₄[i]·a₅[i]）。每块 64 个线程。\n旧内核问一对、等一对，再问下一对。阿砾说营地的日子全花在等上了。",
         ),
         cases: || {
             vec![
@@ -673,8 +674,8 @@ fn spill() -> Task {
     Task {
         title: Tr::new("Out to Local", "溢出到本地"),
         brief: Tr::new(
-            "The tower keeps twelve gale planes. rom[0] is n, rom[1] the stride between the planes, and plane k, position i is at rom[32 + k·stride + i]. For each position i < n, out[i] is the sum over the twelve planes of x·x + x.\nOn this machine a thread may use at most 8 registers (a program that needs more is refused). Extra values can be parked in the thread's own local memory with STL and fetched back with LDL, but a local read takes 80 cycles.\nThe old kernel is right, yet Yinpo's tower crawls. Blocks of 64 threads. Find where the time goes, then keep everything in registers.",
-            "塔上有十二层风压板。rom[0] 是 n，rom[1] 是层间间隔，第 k 层第 i 个位置在 rom[32 + k·stride + i]。对每个位置 i < n，out[i] 是十二层上 x·x + x 的总和。\n这台机器上每个线程最多只能用 8 个寄存器（需要更多的程序会被拒绝）。多出来的值可以用 STL 放进线程自己的本地内存，再用 LDL 取回，但读一次本地内存要 80 拍。\n旧内核结果是对的，银婆的塔却慢得像在爬。每块 64 个线程。找出时间花在哪里，然后把一切都留在寄存器里。",
+            "The camp keeps twelve gale planes. rom[0] is n, rom[1] the stride between the planes, and plane k, position i is at rom[32 + k·stride + i]. For each position i < n, out[i] is the sum over the twelve planes of x·x + x.\nOn this machine a thread may use at most 8 registers (a program that needs more is refused). Extra values can be parked in the thread's own local memory with STL and fetched back with LDL, but a local read takes 80 cycles.\nThe old kernel is right, yet Ali's maps come out at a crawl. Blocks of 64 threads. Find where the time goes, then keep everything in registers.",
+            "营地有十二层风压板。rom[0] 是 n，rom[1] 是层间间隔，第 k 层第 i 个位置在 rom[32 + k·stride + i]。对每个位置 i < n，out[i] 是十二层上 x·x + x 的总和。\n这台机器上每个线程最多只能用 8 个寄存器（需要更多的程序会被拒绝）。多出来的值可以用 STL 放进线程自己的本地内存，再用 LDL 取回，但读一次本地内存要 80 拍。\n旧内核结果是对的，阿砾的图却出得慢得像在爬。每块 64 个线程。找出时间花在哪里，然后把一切都留在寄存器里。",
         ),
         cases: || vec![twelve(1231, 4096, 4096), twelve(1232, 2048, 2048)],
         hidden: || {
@@ -888,8 +889,8 @@ fn blocksize() -> Task {
     Task {
         title: Tr::new("How Big a Block", "块有多大"),
         brief: Tr::new(
-            "Yinpo wants the day's total wind pressure from the tower. rom[0] is n and the n readings follow from rom[32]. Add them all and leave the sum in out[0]; the other cells stay 0.\nThe kernel below is correct: each thread sums four readings, each warp folds its sum with SHFL, the warps of a block meet in shared memory, and one ATOM per block adds the block's sum to out[0]. The program starts with .block 32. This level lets you choose the block size with a .block line (32 to 512, a multiple of 32); the machine launches just enough blocks of that size to cover all the threads. Find the size that makes the tower fastest on every day.",
-            "银婆想知道塔上一天的风压总和。rom[0] 是 n，n 个读数从 rom[32] 开始。把它们全部加起来，和放进 out[0]，其余格子保持 0。\n下面这个内核是对的：每个线程加四个读数，每个 warp 用 SHFL 折叠自己的和，块里的各个 warp 在共享内存里碰头，每块用一次 ATOM 把本块的和加进 out[0]。程序一开始写着 .block 32。这一关让你用一行 .block（32 到 512，32 的倍数）自己选块大小；机器会按这个大小发出刚好够用的块。找出能让塔在每一天都最快的大小。",
+            "Ali wants the day's total wind pressure over the camp. rom[0] is n and the n readings follow from rom[32]. Add them all and leave the sum in out[0]; the other cells stay 0.\nThe kernel below is correct: each thread sums four readings, each warp folds its sum with SHFL, the warps of a block meet in shared memory, and one ATOM per block adds the block's sum to out[0]. The program starts with .block 32. This level lets you choose the block size with a .block line (32 to 512, a multiple of 32); the machine launches just enough blocks of that size to cover all the threads. Find the size that makes the camp's tally fastest on every day.",
+            "阿砾想知道营地一天的风压总和。rom[0] 是 n，n 个读数从 rom[32] 开始。把它们全部加起来，和放进 out[0]，其余格子保持 0。\n下面这个内核是对的：每个线程加四个读数，每个 warp 用 SHFL 折叠自己的和，块里的各个 warp 在共享内存里碰头，每块用一次 ATOM 把本块的和加进 out[0]。程序一开始写着 .block 32。这一关让你用一行 .block（32 到 512，32 的倍数）自己选块大小；机器会按这个大小发出刚好够用的块。找出能让营地在每一天都算得最快的大小。",
         ),
         cases: || vec![heap(1241, 8192), heap(1242, 4096), heap(1243, 12000)],
         hidden: || vec![heap(1244, 5000), heap(1245, 777), heap(1246, 12000)],
@@ -1090,8 +1091,8 @@ fn dma() -> Task {
     Task {
         title: Tr::new("The Carrier Engine", "搬运引擎"),
         brief: Tr::new(
-            "Yinpo keeps the gale readings in the depot far below the tower. rom[0] is n, rom[1] is w, and the n readings follow from rom[32]. For every reading x, run 6·w rounds of: x = x·5 + 3, then x = x XOR (x >> 3). out[i] is the result for reading i; cells past n stay 0.\nBlocks have 128 threads. Block b takes the 1024 readings from 1024·b on, as eight tiles of 128, one reading per thread. DMA dst, src, count copies count words from the depot, starting at rom[src], into the block's shared memory at dst. It runs in the background and lands about 400 cycles later; BAR waits until the block's copies have landed, and reading the words earlier gives old data.\nThe old kernel copies a tile, waits, computes it, waits, then fetches the next one. It is correct, but it spends the whole day waiting. Keep the copy engine busy while the warps compute.",
-            "银婆把风压读数存在塔下很深的仓库里。rom[0] 是 n，rom[1] 是 w，n 个读数从 rom[32] 开始。对每个读数 x，做 6·w 轮：x = x·5 + 3，然后 x = x XOR (x >> 3)。out[i] 是第 i 个读数的结果；n 之后的格子保持 0。\n每块 128 个线程。第 b 块负责从 1024·b 开始的 1024 个读数，分成八个 128 个的小块，每个线程管一个。DMA dst, src, count 把仓库里从 rom[src] 起的 count 个字搬进本块共享内存的 dst 处。它在后台进行，约 400 拍后到货；BAR 会等到本块的搬运都到货，更早去读这些字只会读到旧数据。\n旧内核搬一块、等、算、再等，然后才去取下一块。结果是对的，可它一整天都在等。让搬运引擎一直有活干，同时让 warp 去计算。",
+            "Ali keeps the gale readings in a depot far out past the dunes. rom[0] is n, rom[1] is w, and the n readings follow from rom[32]. For every reading x, run 6·w rounds of: x = x·5 + 3, then x = x XOR (x >> 3). out[i] is the result for reading i; cells past n stay 0.\nBlocks have 128 threads. Block b takes the 1024 readings from 1024·b on, as eight tiles of 128, one reading per thread. DMA dst, src, count copies count words from the depot, starting at rom[src], into the block's shared memory at dst. It runs in the background and lands about 400 cycles later; BAR waits until the block's copies have landed, and reading the words earlier gives old data.\nThe old kernel copies a tile, waits, computes it, waits, then fetches the next one. It is correct, but it spends the whole day waiting. Keep the copy engine busy while the warps compute.",
+            "阿砾把风压读数存在沙丘外很远的仓库里。rom[0] 是 n，rom[1] 是 w，n 个读数从 rom[32] 开始。对每个读数 x，做 6·w 轮：x = x·5 + 3，然后 x = x XOR (x >> 3)。out[i] 是第 i 个读数的结果；n 之后的格子保持 0。\n每块 128 个线程。第 b 块负责从 1024·b 开始的 1024 个读数，分成八个 128 个的小块，每个线程管一个。DMA dst, src, count 把仓库里从 rom[src] 起的 count 个字搬进本块共享内存的 dst 处。它在后台进行，约 400 拍后到货；BAR 会等到本块的搬运都到货，更早去读这些字只会读到旧数据。\n旧内核搬一块、等、算、再等，然后才去取下一块。结果是对的，可它一整天都在等。让搬运引擎一直有活干，同时让 warp 去计算。",
         ),
         cases: || {
             vec![
@@ -1263,8 +1264,8 @@ fn fence() -> Task {
     Task {
         title: Tr::new("The Fence", "栅栏"),
         brief: Tr::new(
-            "Yinpo sends a message down the well in two parts: first 256 words of readings, then a flag that says the readings are ready. Block 0 of the kernel writes out[t] = 7t + 3 for t < 256, and then one thread sets out[256] = 1. Block 1 polls out[256] with LDO (64 tries, one read each), and when it sees 1 it copies the 256 words into out[320 + t].\nOn this machine a store reaches the other block's view only after a delay that depends on the day's weather (the seed), and a store with a few lanes is not necessarily seen in the order it was issued. The old kernel writes the words and then the flag, and still block 1 copies zeros. Find out why, and make the copy correct on every seed.",
-            "银婆把消息分两部分送下井去：先是 256 个字的读数，然后是一个说明读数已备好的标志。内核里的 0 号块写 out[t] = 7t + 3（t < 256），然后由一个线程写 out[256] = 1。1 号块用 LDO 轮询 out[256]（最多 64 次，每次读一遍），一旦看到 1，就把这 256 个字拷进 out[320 + t]。\n在这台机器上，一次写入要过一段由当天天气（种子）决定的延迟，才会进入另一个块的视野，而且先发出的写入未必先被看见。旧内核先写字、再写标志，可 1 号块拷出来的却是零。找出原因，让拷贝在每一个种子下都正确。",
+            "Ali sends a message across the camp in two parts: first 256 words of readings, then a flag that says the readings are ready. Block 0 of the kernel writes out[t] = 7t + 3 for t < 256, and then one thread sets out[256] = 1. Block 1 polls out[256] with LDO (64 tries, one read each), and when it sees 1 it copies the 256 words into out[320 + t].\nOn this machine a store reaches the other block's view only after a delay that depends on the day's weather (the seed), and a store with a few lanes is not necessarily seen in the order it was issued. The old kernel writes the words and then the flag, and still block 1 copies zeros. Find out why, and make the copy correct on every seed.",
+            "阿砾把消息分两部分送到营地另一头：先是 256 个字的读数，然后是一个说明读数已备好的标志。内核里的 0 号块写 out[t] = 7t + 3（t < 256），然后由一个线程写 out[256] = 1。1 号块用 LDO 轮询 out[256]（最多 64 次，每次读一遍），一旦看到 1，就把这 256 个字拷进 out[320 + t]。\n在这台机器上，一次写入要过一段由当天天气（种子）决定的延迟，才会进入另一个块的视野，而且先发出的写入未必先被看见。旧内核先写字、再写标志，可 1 号块拷出来的却是零。找出原因，让拷贝在每一个种子下都正确。",
         ),
         cases: || vec![gale(1), gale(2)],
         hidden: || vec![gale(3), gale(4), gale(7), gale(10)],
@@ -1531,8 +1532,8 @@ fn sand_atlas() -> Task {
     Task {
         title: Tr::new("Sand Charts of the Atlas", "区域沙风图"),
         brief: Tr::new(
-            "The caravan wants a sand chart for 64 regions of the desert, and a small overview of all of them. Region r has a wind direction d = rom[r] (0..3), a speed s = rom[64 + r], and a 16 x 16 terrain grid t at rom[128 + 256r + 16y + x] (values 0..15). Each cell carries q sand: d0: t*s + 3; d1: ((t ^ s) << 1) + 1; d2: t*t + s; d3: t > s ? t*3 : t + (s << 1). Then each cell of the region chart is the sum of q over its 3 x 3 neighbourhood, with cells outside the region counted as 0. Write the chart of region r to out[256r + 16y + x].\nThe overview is stitched by other blocks once a region is done: out[16384 + r] must hold the chart cell (8, 8) of region r, and the producer of region r sets out[16448 + r] = 1 after its chart is written. The launch is fixed: 18 blocks of 256 threads, and how you split the work between them is yours. Hidden days have another mix of winds and another weather for the stores. There is no starter; Yinpo is waiting.",
-            "驼队想要沙漠 64 个区域的沙风图，外加一张总览。区域 r 有风向 d = rom[r]（0..3）、风速 s = rom[64 + r]，以及位于 rom[128 + 256r + 16y + x] 的 16 × 16 地形 t（值 0..15）。每格带的沙量 q：d0：t*s + 3；d1：((t ^ s) << 1) + 1；d2：t*t + s；d3：t > s ? t*3 : t + (s << 1)。区域图的每一格，是它 3 × 3 邻域里 q 的总和，区域外的格子按 0 计。区域 r 的图写到 out[256r + 16y + x]。\n总览由别的块在区域完成后拼入：out[16384 + r] 要放区域 r 图的 (8, 8) 格，区域 r 的生产者在写完图之后，置 out[16448 + r] = 1。启动是固定的：18 个块、每块 256 个线程，工作怎么在块之间分，由你决定。隐藏的几天风向分布不同，写入的天气也不同。没有初始方案，银婆在等。",
+            "Ali's camp needs sand-wind charts for 64 regions of the desert at once, and a small overview of all of them. Region r has a wind direction d = rom[r] (0..3), a speed s = rom[64 + r], and a 16 x 16 terrain grid t at rom[128 + 256r + 16y + x] (values 0..15). Each cell carries q sand: d0: t*s + 3; d1: ((t ^ s) << 1) + 1; d2: t*t + s; d3: t > s ? t*3 : t + (s << 1). Then each cell of the region chart is the sum of q over its 3 x 3 neighbourhood, with cells outside the region counted as 0. Write the chart of region r to out[256r + 16y + x].\nThe overview is stitched by other blocks once a region is done: out[16384 + r] must hold the chart cell (8, 8) of region r, and the producer of region r sets out[16448 + r] = 1 after its chart is written. The launch is fixed: 18 blocks of 256 threads, and how you split the work between them is yours. Hidden days have another mix of winds and another weather for the stores. There is no starter; Ali is waiting.",
+            "营地要同时出沙漠 64 个区域的沙风图，外加一张总览。区域 r 有风向 d = rom[r]（0..3）、风速 s = rom[64 + r]，以及位于 rom[128 + 256r + 16y + x] 的 16 × 16 地形 t（值 0..15）。每格带的沙量 q：d0：t*s + 3；d1：((t ^ s) << 1) + 1；d2：t*t + s；d3：t > s ? t*3 : t + (s << 1)。区域图的每一格，是它 3 × 3 邻域里 q 的总和，区域外的格子按 0 计。区域 r 的图写到 out[256r + 16y + x]。\n总览由别的块在区域完成后拼入：out[16384 + r] 要放区域 r 图的 (8, 8) 格，区域 r 的生产者在写完图之后，置 out[16448 + r] = 1。启动是固定的：18 个块、每块 256 个线程，工作怎么在块之间分，由你决定。隐藏的几天风向分布不同，写入的天气也不同。没有初始方案，阿砾在等。",
         ),
         cases: || vec![day(1261, 0, 1), day(1262, 0, 2), day(1263, 1, 3)],
         hidden: || vec![day(1264, 2, 4), day(1265, 3, 7)],
@@ -1540,7 +1541,7 @@ fn sand_atlas() -> Task {
         profile: Profile::ATLAS_WEAK,
         limit: Some(Goal::new(Metric::Cycles, 24000)),
         goals: [Goal::new(Metric::Cycles, 19500), Goal::new(Metric::Regs, 8)],
-        starter: Source::Code("; no starter: the caravan is waiting | 没有初始方案：驼队在等\n"),
+        starter: Source::Code("; no starter: the camp is waiting | 没有初始方案：营地在等\n"),
         reference: Source::Code(SAND_REF),
         live: Some(|frame, at| {
             let k = at[0].rem_euclid(4);

@@ -1,6 +1,6 @@
 //! What the game remembers between sessions.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use oo_base::{Campaign, Settings};
 use serde::{Deserialize, Serialize};
@@ -30,6 +30,8 @@ pub struct SaveData {
     pub best_work: BTreeMap<String, Solution>,
     /// Free experiments never overwrite a campaign solution.
     pub labs: BTreeMap<String, Solution>,
+    /// Named free-bench slots; filled from `labs` the first time.
+    pub lab_slots: Vec<crate::lab::slot::LabSlot>,
     /// The most recently visited campaign task.
     pub last_task: Option<String>,
     pub ending: Option<Ending>,
@@ -41,6 +43,31 @@ pub struct SaveData {
     pub seen_intro: bool,
     /// Fault task ids whose evidence the player has pointed at.
     pub evidence: Vec<String>,
+    /// Sealed kernels: name to assembly source, from the player's passing work.
+    pub seals: BTreeMap<String, String>,
+    /// Chapters whose opening dialogue has been shown.
+    #[serde(default)]
+    pub seen_openings: BTreeSet<u8>,
+    /// Open problems: the lowest passing score per problem id.
+    pub open_best: BTreeMap<String, u32>,
+    /// Music level and replay sounds (the shared settings hold the rest).
+    pub sound: Sound,
+}
+
+/// Sound preferences beside the shared volume and mute.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Sound {
+    /// 0..=10; 0 turns the music off.
+    pub music: u8,
+    /// Notes while the Warp River replays a run and in the Showcase.
+    pub sim: bool,
+}
+
+impl Default for Sound {
+    fn default() -> Self {
+        Self { music: 6, sim: true }
+    }
 }
 
 impl Default for SaveData {
@@ -52,12 +79,17 @@ impl Default for SaveData {
             work: BTreeMap::new(),
             best_work: BTreeMap::new(),
             labs: BTreeMap::new(),
+            lab_slots: Vec::new(),
             last_task: None,
             ending: None,
             predicted: Vec::new(),
             insights: Vec::new(),
             seen_intro: false,
             evidence: Vec::new(),
+            seals: BTreeMap::new(),
+            seen_openings: BTreeSet::new(),
+            open_best: BTreeMap::new(),
+            sound: Sound::default(),
         }
     }
 }
@@ -74,7 +106,10 @@ impl SaveData {
         if s.version > SAVE_VERSION {
             return None;
         }
-        s.work.retain(|id, _| content::task(id).is_some());
+        // Open problems keep work too, under their own ids.
+        let known = |id: &str| content::task(id).is_some() || content::open::open(id).is_some();
+        s.work.retain(|id, _| known(id));
+        s.open_best.retain(|id, _| content::open::open(id).is_some());
         s.best_work.retain(|id, _| content::task(id).is_some());
         s.labs.retain(|id, _| content::task(id).is_some());
         s.campaign
@@ -97,8 +132,10 @@ impl SaveData {
         if s.last_task.as_deref().is_some_and(|id| content::task(id).is_none()) {
             s.last_task = None;
         }
+        crate::lab::slot::migrate(&mut s);
         s.settings.volume = s.settings.volume.min(10);
         s.settings.ui_scale = s.settings.ui_scale.clamp(100, 200);
+        s.sound.music = s.sound.music.min(10);
         s.version = SAVE_VERSION;
         Some(s)
     }
@@ -118,6 +155,18 @@ impl SaveData {
     /// Fault tasks count as solved only once their evidence is found.
     pub fn has_evidence(&self, task: &Task) -> bool {
         task.clue.is_none() || self.evidence.iter().any(|x| x == task.id)
+    }
+
+    /// Records an open problem's passing score; true when it beats the
+    /// previous best (or is the first).
+    pub fn note_open(&mut self, id: &str, score: u32) -> bool {
+        match self.open_best.get(id) {
+            Some(&b) if b <= score => false,
+            _ => {
+                self.open_best.insert(id.to_string(), score);
+                true
+            }
+        }
     }
 
     pub fn note_once(list: &mut Vec<String>, id: &str) -> bool {
@@ -166,6 +215,21 @@ mod tests {
     }
 
     #[test]
+    fn open_problems_keep_work_and_best_scores() {
+        let o = &content::open::opens()[0];
+        let mut s = SaveData::default();
+        s.work.insert(o.task.id.into(), o.task.reference.solution());
+        assert!(s.note_open(o.task.id, 40));
+        assert!(!s.note_open(o.task.id, 40));
+        assert!(s.note_open(o.task.id, 30));
+        s.open_best.insert("gone".into(), 1);
+        let back = SaveData::from_json(&s.to_json()).unwrap();
+        assert_eq!(back.open_best.get(o.task.id), Some(&30));
+        assert!(!back.open_best.contains_key("gone"));
+        assert!(back.work.contains_key(o.task.id));
+    }
+
+    #[test]
     fn unlocks_follow_requirements() {
         let mut s = SaveData::default();
         let line = content::task("the-line").unwrap();
@@ -193,8 +257,10 @@ mod tests {
 
     #[test]
     fn migrates_v1_without_overwriting_experiments_or_progress() {
-        let mut old = SaveData::default();
-        old.version = 1;
+        let mut old = SaveData {
+            version: 1,
+            ..SaveData::default()
+        };
         let task = content::task("first-light").unwrap();
         old.work.insert(task.id.into(), task.reference.solution());
         old.labs.insert(task.id.into(), task.starter.solution());

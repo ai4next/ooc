@@ -23,7 +23,7 @@ pub const ATOM_COST: u32 = 2;
 pub const ATOM_LAT: u32 = 40;
 
 /// Tags of output-buffer lines sit above every ROM line.
-const OUT_TAG: u32 = 1 << 24;
+pub const OUT_TAG: u32 = 1 << 24;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Space {
@@ -124,14 +124,24 @@ impl MemSys {
 
 /// Distinct words per bank, worst bank: how many passes the access takes.
 pub fn bank_passes(addrs: &[i32]) -> u32 {
-    let mut per: [Vec<i32>; BANKS as usize] = std::array::from_fn(|_| Vec::new());
-    for &a in addrs {
-        let b = &mut per[a.rem_euclid(BANKS) as usize];
-        if !b.contains(&a) {
-            b.push(a);
+    // A warp's access fits on the stack; it runs on every shared load and store.
+    let mut buf = [0i32; 64];
+    let mut heap;
+    let sorted: &mut [i32] = if addrs.len() <= buf.len() {
+        buf[..addrs.len()].copy_from_slice(addrs);
+        &mut buf[..addrs.len()]
+    } else {
+        heap = addrs.to_vec();
+        &mut heap
+    };
+    sorted.sort_unstable();
+    let mut per = [0u32; BANKS as usize];
+    for (i, &a) in sorted.iter().enumerate() {
+        if i == 0 || sorted[i - 1] != a {
+            per[a.rem_euclid(BANKS) as usize] += 1;
         }
     }
-    per.iter().map(|b| b.len() as u32).max().unwrap_or(0)
+    per.into_iter().max().unwrap_or(0)
 }
 
 /// The most lanes that hit one address.
